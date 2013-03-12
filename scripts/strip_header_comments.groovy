@@ -1,10 +1,6 @@
 #!/bin/env groovy
 
-@Grapes(
-        @Grab(group='edu.stanford.nlp', module='stanford-corenlp', version='1.3.4')
-)
-
-def zzyzzx = 0 + 1
+@Grab(group = 'edu.stanford.nlp', module = 'stanford-corenlp', version = '1.3.4')
 
 import edu.stanford.nlp.trees.PennTreeReader
 import edu.stanford.nlp.trees.Tree
@@ -51,17 +47,12 @@ original_brown_corpus.eachFileRecurse { File original_file ->
                         println leaves.join(' ')
                         println preterminals.join(' ')
                         println penn
-               	     }
-                 printer << penn
+                    }
+                    printer << penn
                 }
 
                 println "${cleaned_file.path}\t${cleaned_file.parentFile.name}\t${count}"
             }
-
-
         }
     }
-
 }
-
-// edu.stanford.nlp:stanford-corenlp:1.3.4

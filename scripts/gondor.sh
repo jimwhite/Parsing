@@ -13,5 +13,5 @@ fi
 
 #export CLASSPATH=src:$LUCENE_HOME/lucene-core-3.5.0.jar
 export CLASSPATH=src
-
-file "SCRIPT_DIR/go_gondor.groovy" $*
+pwd
+"$SCRIPT_DIR/go_gondor.groovy" $*
