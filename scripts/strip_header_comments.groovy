@@ -12,7 +12,7 @@ import edu.stanford.nlp.trees.Tree
 
 original_brown_corpus = new File('/corpora/LDC/LDC99T42/RAW/parsed/mrg/brown')
 
-brown_corpus = new File('corpora/brown/mrg')
+brown_corpus = new File('xcorpus')
 
 original_brown_corpus.eachFileRecurse { File original_file ->
     if (original_file.isFile() /*&& (original_file.name == "cf01.mrg")*/) {
@@ -51,7 +51,8 @@ original_brown_corpus.eachFileRecurse { File original_file ->
                         println leaves.join(' ')
                         println preterminals.join(' ')
                         println penn
-                    }
+               	     }
+                 printer << penn
                 }
 
                 println "${cleaned_file.path}\t${cleaned_file.parentFile.name}\t${count}"
