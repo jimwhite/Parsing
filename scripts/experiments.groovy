@@ -29,7 +29,7 @@ MODELDIR=new File(bllip_dir, 'second-stage/models/ec50spfinal')
 ESTIMATORNICKNAME='cvlm-l1c10P1'
 
 // first-stage/PARSE/parseIt -l399 -N50 first-stage/DATA/EN/ $*
-parse_nbest = gondor.condor_command(new File(bllip_dir, 'first-stage/PARSE/parseIt'), ['l', 'N', 'model.in', 'input.in'])
+parse_nbest = gondor.condor_command(new File(bllip_dir, 'first-stage/PARSE/parseIt'), ['-l399.flag', '-N50.flag', 'model.in', 'input.in'])
 
 // second-stage/programs/features/best-parses" -l "$MODELDIR/features.gz" "$MODELDIR/$ESTIMATORNICKNAME-weights.gz"
 parse_rerank = gondor.condor_command(new File(bllip_dir, 'second-stage/programs/features/best-parses'), ['-l.flag', 'features.in', 'weights.in', 'infile.in'])
@@ -52,6 +52,6 @@ test_original_ptb_files.each { File original_ptb ->
     if (!charniak_input.exists()) convert_ptb(mode:'-c', from:original_ptb, outfile:charniak_input)
     if (!evalb_gold.exists()) convert_ptb(mode:'-e', from:original_ptb, outfile:evalb_gold)
 
-    parse_nbest(l:399, N:50, model:PARSER_MODEL, input:charniak_input, outfile:nbest_output)
+    parse_nbest(model:PARSER_MODEL, input:charniak_input, outfile:nbest_output)
     parse_rerank(features:new File(MODELDIR, 'features.gz'), weights:new File(MODELDIR, ESTIMATORNICKNAME+'-weights.gz'), infile:nbest_output, outfile:reranker_output)
 }
