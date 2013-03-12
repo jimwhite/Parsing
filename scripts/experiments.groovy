@@ -31,7 +31,7 @@ ESTIMATORNICKNAME='cvlm-l1c10P1'
 parse_nbest = gondor.condor_command(new File(bllip_dir, 'first-stage/PARSE/parseIt'), ['l', 'N', 'model.in', 'input.in'])
 
 // second-stage/programs/features/best-parses" -l "$MODELDIR/features.gz" "$MODELDIR/$ESTIMATORNICKNAME-weights.gz"
-parse_rerank = gondor.condor_command(new File(bllip_dir, 'second-stage/programs/features/best-parses'), ['-l.flag', 'features.in', 'weights.in'])
+parse_rerank = gondor.condor_command(new File(bllip_dir, 'second-stage/programs/features/best-parses'), ['-l.flag', 'features.in', 'weights.in', 'infile.in'])
 
 //////////////////////
 // Job DAG Definitions

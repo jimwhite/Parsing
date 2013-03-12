@@ -132,9 +132,9 @@ class Gondor
 Universe   = vanilla
 Environment = ${environment.collect { k, v -> k + '=' + v}.join(';') }
 Executable  = $script_file
-Arguments   = ${ vars.collect { it.endsWith('.flag') ? it - ~/\.flag$/ : '\$(_'+it+')' }.join(' ')}
+Arguments   = ${ vars.grep { it != 'infile' }.collect { it.endsWith('.flag') ? it - ~/\.flag$/ : '\$(_'+it+')' }.join(' ')}
 Log         = /tmp/${user}_${script_name}.log
-Input       = \$(_MyJobInput)
+${invars.contains('infile') ? 'Input       = \$(_MyJobInput)' : ''}
 Output 		= \$(_MyJobOutput)
 Error	    = \$(_MyJobError)
 Request_Memory=6*1029
@@ -151,15 +151,15 @@ Queue
 
             def job_id = script_name + '_J' + (++job_counter)
 
-            def infile = new File("/dev/null")
+//            def infile = new File("/dev/null")
             def outfile = new File(job_output_dir, "${job_id}.out")
             def errfile = new File(job_output_dir, "${job_id}.err")
 
-            if (args.containsKey('infile')) { infile = args.remove('infile') }
+//            if (args.containsKey('infile')) { infile = args.remove('infile') }
             if (args.containsKey('outfile')) { outfile = args.remove('outfile') }
             if (args.containsKey('errfile')) { errfile = args.remove('errfile') }
 
-            def job = [id: job_id, condor:condor_cmd_file, infile:infile, outfile:outfile, errfile:errfile, vars:vars, invars:invars, outvars:outvars, args:args, parents:[]];
+            def job = [id: job_id, condor:condor_cmd_file, outfile:outfile, errfile:errfile, vars:vars, invars:invars, outvars:outvars, args:args, parents:[]];
 
             output_files[outfile] = job
             output_files[errfile] = job
@@ -231,9 +231,9 @@ Universe   = java
 Environment = ${environment.collect { k, v -> k + '=' + v}.join(';') }
 JAR_Files   = ${jar_files.join(':')}
 Executable  = ${executable}
-Arguments   = ${main_class} -Xmx6g ${ vars.collect { it.endsWith('.flag') ? it - ~/\.flag$/ : '\$(_'+it+')' }.join(' ')}
+Arguments   = ${main_class} -Xmx6g ${ vars.grep { it != 'infile' }.collect { it.endsWith('.flag') ? it - ~/\.flag$/ : '\$(_'+it+')' }.join(' ')}
 Log         = /tmp/${user}_${script_name}.log
-Input       = \$(_MyJobInput)
+${invars.contains('infile') ? 'Input       = \$(_MyJobInput)' : ''}
 Output 		= \$(_MyJobOutput)
 Error	    = \$(_MyJobError)
 Request_Memory = 6*1024
@@ -252,15 +252,15 @@ Queue
 
             def job_id = script_name + '_J' + (++job_counter)
 
-            def infile = new File("/dev/null")
+//            def infile = new File("/dev/null")
             def outfile = new File(job_output_dir, "${job_id}.out")
             def errfile = new File(job_output_dir, "${job_id}.err")
 
-            if (args.containsKey('infile')) { infile = args.remove('infile') }
+//            if (args.containsKey('infile')) { infile = args.remove('infile') }
             if (args.containsKey('outfile')) { outfile = args.remove('outfile') }
             if (args.containsKey('errfile')) { errfile = args.remove('errfile') }
 
-            def job = [id: job_id, condor:condor_cmd_file, infile:infile, outfile:outfile, errfile:errfile, vars:vars, invars:invars, outvars:outvars, args:args, parents:[]];
+            def job = [id: job_id, condor:condor_cmd_file, outfile:outfile, errfile:errfile, vars:vars, invars:invars, outvars:outvars, args:args, parents:[]];
 
             output_files[outfile] = job
             output_files[errfile] = job
@@ -299,7 +299,7 @@ Queue
                 printer.println "JOB ${job.id} ${job.condor}"
 
                 // Variables that begin with a dash have a default value of themselves.
-                job.vars.grep { it.startsWith('') }.each { if (!job.args.containsKey(it)) job.args[it] = it }
+                job.vars.grep { it.startsWith('-') }.each { if (!job.args.containsKey(it)) job.args[it] = it }
 
                 if (!job.args.keySet().containsAll(job.vars)) {
                     printer.println "### WARNING: Missing arguments: ${job.vars - job.args.keySet()}"
@@ -330,8 +330,9 @@ Queue
                             }
                         }
                     }
-                    '_' + var + '=\"' + argument_to_string(job.args[var]) + '\"'
-                }) + ['_MyJobInput=\"'+job.infile.canonicalPath+'\"', '_MyJobOutput=\"'+job.outfile.canonicalPath+'\"', '_MyJobError=\"'+job.errfile.canonicalPath+'\"']).join(' ')
+
+                    '_' + ((var == 'infile') ? 'MyJobInput' : var) + '=\"' + argument_to_string(job.args[var]) + '\"'
+                }) + ['_MyJobOutput=\"'+job.outfile.canonicalPath+'\"', '_MyJobError=\"'+job.errfile.canonicalPath+'\"']).join(' ')
 
                 if (job.parents) dependencies.add("PARENT ${job.parents.id.unique().join(' ')} CHILD ${job.id}".toString())
 
