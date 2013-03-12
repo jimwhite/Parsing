@@ -1,11 +1,14 @@
 #!/bin/env groovy
 
+@Grapes(
+        @Grab(group='edu.stanford.nlp', module='stanford-corenlp', version='1.3.4')
+)
+
+def zzyzzx = 0 + 1
+
 import edu.stanford.nlp.trees.PennTreeReader
 import edu.stanford.nlp.trees.Tree
 
-//@Grapes(
-//        @Grab(group='edu.stanford.nlp', module='stanford-corenlp', version='1.3.4')
-//)
 
 original_brown_corpus = new File('/corpora/LDC/LDC99T42/RAW/parsed/mrg/brown')
 
