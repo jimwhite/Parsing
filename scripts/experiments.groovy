@@ -24,6 +24,7 @@ tmp_dir = new File('tmp')
 
 convert_ptb = gondor.condor_command(new File(bllip_dir, 'second-stage/programs/prepare-data/ptb'), ['mode', 'from.in'])
 
+PARSER_MODEL=new File(bllip_dir, 'first-stage/DATA/EN/')
 MODELDIR=new File(bllip_dir, 'second-stage/models/ec50spfinal')
 ESTIMATORNICKNAME='cvlm-l1c10P1'
 
@@ -51,6 +52,6 @@ test_original_ptb_files.each { File original_ptb ->
     if (!charniak_input.exists()) convert_ptb(mode:'-c', from:original_ptb, outfile:charniak_input)
     if (!evalb_gold.exists()) convert_ptb(mode:'-e', from:original_ptb, outfile:evalb_gold)
 
-    parse_nbest(l:399, N:50, model:MODELDIR, input:charniak_input, outfile:nbest_output)
+    parse_nbest(l:399, N:50, model:PARSER_MODEL, input:charniak_input, outfile:nbest_output)
     parse_rerank(features:new File(MODELDIR, 'features.gz'), weights:new File(MODELDIR, ESTIMATORNICKNAME+'-weights.gz'), infile:nbest_output, outfile:reranker_output)
 }
