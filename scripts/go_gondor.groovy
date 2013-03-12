@@ -359,7 +359,7 @@ Queue
         if (val instanceof Collection) {
             (val.collect { it instanceof File ? it.canonicalPath : it }).join(' ')
         } else {
-            val instanceof File ? val.canonicalPath : val
+            val instanceof File ? (val.isDirectory() ? val.canonicalPath + "/" : val.canonicalPath) : val
         }
     }
 }
