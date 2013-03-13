@@ -28,7 +28,7 @@ tmp_dir = new File('tmp')
 convert_ptb = gondor.condor_command(new File(bllip_dir, 'second-stage/programs/prepare-data/ptb'), ['mode', 'from.in'])
 
 PARSER_MODEL=new File(bllip_dir, 'first-stage/DATA/EN/')
-MODELDIR=new File(bllip_dir, 'second-stage/models/ec50spfinal')
+MODELDIR=new File(bllip_dir, 'second-stage/models/ec50spnonfinal')
 ESTIMATORNICKNAME='cvlm-l1c10P1'
 
 // first-stage/PARSE/parseIt -l399 -N50 first-stage/DATA/EN/ $*
