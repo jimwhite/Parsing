@@ -1,3 +1,5 @@
+#!/usr/bin/env groovy
+
 bllip_dir = new File('bllip-parser')
 
 tmp_dir = new File('tmp')
