@@ -10,7 +10,9 @@ all_files = sysout_dir.listFiles().grep { it.isDirectory() }.collectMany { it.li
 
 evalb_dir = new File(tmp_dir, 'evalb')
 
-//evalb(all_files, new File(evalb_dir, 'xcorpus'))
+evalb_dir.delete()
+
+evalb(all_files, new File(evalb_dir, 'xcorpus'))
 
 all_files.each { File best ->
     // evalb([new File(tmp_dir, 'xcorpus/cf/cf03.mrg.best')], new File(evalb_dir, 'cf/cf03'))
@@ -55,49 +57,52 @@ def evalb(List<File> best_files, File baseFile)
 
     def logpFile = new File(baseFile.parentFile, baseFile.name + '.logp.txt')
 
-    def evalb_lines = outFile.text.readLines()
+    outFile.withReader { evalb_reader ->
 
-    if (evalb_lines) {
-        evalb_lines.remove(0)   //   Sent.                        Matched  Bracket   Cross        Correct Tag
-        evalb_lines.remove(0)   // ID  Len.  Stat. Recal  Prec.  Bracket gold test Bracket Words  Tags Accracy
-        def header_separator = evalb_lines.remove(0)
-        if (!header_separator.startsWith('===')) {
-            println "Expected ${outFile.path} to be separator but got this instead:"
-            println header_separator
-            println()
-        }
+        if (evalb_reader.readLine()) {
+            // That should have been first of these two header lines:
+            //   Sent.                        Matched  Bracket   Cross        Correct Tag
+            // ID  Len.  Stat. Recal  Prec.  Bracket gold test Bracket Words  Tags Accracy
+            // And this should be the second one:
+            evalb_reader.readLine()
 
-        logpFile.withPrintWriter { printer ->
-            def parse_lines = nbest_trees.readLines() // .collect { it.trim() }.grep { it }
+            def header_separator = evalb_reader.readLine()
+            if (!header_separator.startsWith('===')) {
+                println "Expected ${outFile.path} to be separator but got this instead:"
+                println header_separator
+                println()
+            }
 
-            while (parse_lines) {
-                def h = parse_lines.remove(0)
+            logpFile.withPrintWriter { printer ->
+                nbest_trees.withReader { tree_reader ->
+                    String parse_line
+                    while (parse_line = tree_reader.readLine()) {
+                        def (_, parse_count, sentence_id0) = (parse_line =~ /(\d+)[^.]+\.(.+)/)[0]
+                        parse_count = parse_count as Integer
 
-                if (h) {
-                    def (_, parse_count, sentence_id0) = (h =~ /(\d+)[^.]+\.(.+)/)[0]
-                    parse_count = parse_count as Integer
+                        def first_p = 0
 
-                    def first_p = 0
+                        parse_count.times { i ->
+                            def p = tree_reader.readLine() as Double
+                            def x = tree_reader.readLine()
 
-                    parse_count.times { i ->
-                        def p = parse_lines.remove(0) as Double
-                        def x = parse_lines.remove(0)
+                            if (!i) first_p = p
+                        }
 
-                        if (!i) first_p = p
-                    }
+                        tree_reader.readLine()  // Should be an empty line
 
-                    parse_lines.remove(0)
+                        def evalb_line = evalb_reader.readLine()
+                        def eval_matcher = evalb_line =~ /\s*(\d+)\s+(\d+)\s+(\d+)\s+([.\d]+)\s+([.\d]+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+([.\d]+)/
+                        if (!eval_matcher.matches()) { println "No match for $sentence_id0 ${nbest_trees.path}\n$evalb_line"}
+                        def eval_match = eval_matcher[0]
+                        def (__, sentence_id1, sent_len, status, recall, precision, matched_bracket, brackets_gold, brackets_test, cross_bracket, word_count, correct_tags, tag_accuracy) = eval_match
 
-                    def evalb_line = evalb_lines.remove(0)
-                    def eval_matcher = evalb_line =~ /\s*(\d+)\s+(\d+)\s+(\d+)\s+([.\d]+)\s+([.\d]+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+([.\d]+)/
-                    def eval_match = eval_matcher[0]
-                    def (__, sentence_id1, sent_len, status, recall, precision, matched_bracket, brackets_gold, brackets_test, cross_bracket, word_count, correct_tags, tag_accuracy) = eval_match
-
-                    sentence_id0 = sentence_id0 as Integer
-                    sentence_id1 = sentence_id1 as Integer
-                    if (((status as Integer) == 0) && (sentence_id0 == sentence_id1 - 1)) {
-                        printer.println "${eval_match.join('\t')}\t$first_p"
+                        sentence_id0 = sentence_id0 as Integer
+                        sentence_id1 = sentence_id1 as Integer
+                        if (((status as Integer) == 0) /*&& (sentence_id0 == sentence_id1 - 1)*/) {
+                            printer.println "${eval_match.join('\t')}\t$first_p"
 //                    printer.println "$sentence_id1\t$sent_len\t${sentence_id1-sentence_id0}\t$recall\t$precision\t$first_p"
+                        }
                     }
                 }
             }
