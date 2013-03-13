@@ -6,6 +6,7 @@
 
 gondor.environment = [PATH:"/usr/kerberos/bin:/usr/local/bin:/bin:/usr/bin:/opt/git/bin:/opt/scripts:/condor/bin"
         , LC_COLLATE:'C'  // first-stage/PARSE/parseIt needs this to deal with punctuation correctly!
+                            // Not really.  Need to use -K (pretokenized) flag.
 ]
 
 /////////////
@@ -31,7 +32,7 @@ MODELDIR=new File(bllip_dir, 'second-stage/models/ec50spfinal')
 ESTIMATORNICKNAME='cvlm-l1c10P1'
 
 // first-stage/PARSE/parseIt -l399 -N50 first-stage/DATA/EN/ $*
-parse_nbest = gondor.condor_command(new File(bllip_dir, 'first-stage/PARSE/parseIt'), ['-l399.flag', '-N50.flag', 'model.in', 'input.in'])
+parse_nbest = gondor.condor_command(new File(bllip_dir, 'first-stage/PARSE/parseIt'), ['-K.flag', '-l400.flag', '-N50.flag', 'model.in', 'input.in'])
 
 // second-stage/programs/features/best-parses" -l "$MODELDIR/features.gz" "$MODELDIR/$ESTIMATORNICKNAME-weights.gz"
 parse_rerank = gondor.condor_command(new File(bllip_dir, 'second-stage/programs/features/best-parses'), ['-l.flag', 'features.in', 'weights.in', 'infile.in'])
