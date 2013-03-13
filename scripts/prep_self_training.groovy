@@ -1,5 +1,7 @@
 #!/usr/bin/env groovy
 
+sample = args[0] as Integer
+
 bllip_dir = new File('bllip-parser')
 
 tmp_dir = new File('tmp')
@@ -17,6 +19,12 @@ training_data_dir.mkdirs()
 all_files.each { File best ->
     def training_file = new File(training_data_dir, (best.name - ~/\.best$/))
     training_file.withPrintWriter { printer ->
-        best.eachLine { printer.println (it.replaceFirst(/^\(S1/, "(")) }
+        def i = sample
+        best.eachLine { line ->
+            if (--i < 1) {
+                printer.println (line.replaceFirst(/^\(S1/, "("))
+                i = sample
+            }
+        }
     }
 }
