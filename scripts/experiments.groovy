@@ -17,7 +17,7 @@ bllip_dir = new File('bllip-parser')
 
 brown_mrg_dir = new File('xcorpus')
 
-test_original_ptb_files = brown_mrg_dir.listFiles().grep { it.isDirectory() }.collectMany { it.listFiles(). grep { it.name.endsWith ".mrg" } }
+test_original_ptb_files = brown_mrg_dir.listFiles().grep { it.isDirectory() }.collectMany { it.listFiles().grep { it.name.endsWith ".mrg" } }
 
 tmp_dir = new File('tmp')
 
