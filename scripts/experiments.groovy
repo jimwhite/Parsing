@@ -18,11 +18,14 @@ gondor.environment = [PATH:"/usr/kerberos/bin:/usr/local/bin:/bin:/usr/bin:/opt/
 // Data Files
 /////////////
 
-bllip_dir = new File('bllip-parser')
+workspace_dir = new File('/home2/jimwhite/workspace/parsers')
 
-brown_mrg_dir = new File('xcorpus')
+bllip_dir = new File(workspace_dir, 'bllip-parser')
 
-test_original_ptb_files = brown_mrg_dir.listFiles().grep { it.isDirectory() }.collectMany { it.listFiles().grep { it.name.endsWith ".mrg" } }
+xcorpus_dir = new File(workspace_dir, 'xcorpus')
+xcorpus_dir.mkdirs()
+
+brown_mrg_dir = new File('/corpora/LDC/LDC99T42/RAW/parsed/mrg/brown')
 
 tmp_dir = new File('tmp')
 
@@ -30,7 +33,7 @@ tmp_dir = new File('tmp')
 // Condor Command Definitions
 /////////////////////////////
 
-convert_ptb = gondor.condor_command(new File(bllip_dir, 'second-stage/programs/prepare-data/ptb'), ['mode', 'from.in'])
+// convert_ptb = gondor.condor_command(new File(bllip_dir, 'second-stage/programs/prepare-data/ptb'), ['mode', 'from.in'])
 
 PARSER_MODEL=new File(bllip_dir, 'first-stage/DATA/EN/')
 MODELDIR=new File(bllip_dir, 'second-stage/models/ec50spnonfinal')
@@ -48,19 +51,20 @@ rerank_parses = gondor.condor_command(new File(bllip_dir, 'second-stage/programs
 // Job DAG Definitions
 //////////////////////
 
-println test_original_ptb_files
+file_list = new File(xcorpus_dir, 'filelist.txt').text
 
-test_original_ptb_files.each { File original_ptb ->
-    def work_dir = new File(tmp_dir, original_ptb.parentFile.path)
+file_list.each { String file_path ->
+    def work_dir = new File(tmp_dir, file_path)
     work_dir.mkdirs()
 
-    def charniak_input = new File(work_dir, original_ptb.name + ".sent")
-    def evalb_gold = new File(work_dir, original_ptb.name + ".eval")
+    def charniak_input = new File(xcorpus_dir, file_path + ".sent")
+    def evalb_gold = new File(xcorpus_dir, file_path + ".eval")
+
+//    if (!charniak_input.exists()) convert_ptb(mode:'-c', from:original_ptb, outfile:charniak_input)
+//    if (!evalb_gold.exists()) convert_ptb(mode:'-e', from:original_ptb, outfile:evalb_gold)
+
     def nbest_output = new File(work_dir, original_ptb.name + '.nbest')
     def reranker_output = new File(work_dir, original_ptb.name + '.best')
-
-    if (!charniak_input.exists()) convert_ptb(mode:'-c', from:original_ptb, outfile:charniak_input)
-    if (!evalb_gold.exists()) convert_ptb(mode:'-e', from:original_ptb, outfile:evalb_gold)
 
     // parse_nbest(model:PARSER_MODEL, input:charniak_input) >> tee(nbest_output) >> rerank_parses(features: RERANKER_FEATURES, weights: RERANKER_WEIGHTS, outfile:reranker_output)
     // charniak_input >> parse_nbest(model:PARSER_MODEL) >> nbest_output >> rerank_parses(features: RERANKER_FEATURES, weights: RERANKER_WEIGHTS) >> reranker_output
