@@ -31,25 +31,27 @@ all_file_paths.each { evalb(it) }
 
 def evalb(String file_path)
 {
+    def best_file = new File(sysout_dir, file_path + '.best')
     def nbest_trees = new File(sysout_dir, file_path + '.nbest')
-    def reranker_output = new File(sysout_dir, file_path + '.best')
+//    def reranker_output = new File(sysout_dir, file_path + '.best')
     def evalb_gold = new File(xcorpus_dir, file_path + '.eval')
 
-    baseFile.parentFile.mkdirs()
-    nbest_trees.delete()
-    reranker_output.delete()
-    evalb_gold.delete()
+//    baseFile.parentFile.mkdirs()
+//    nbest_trees.delete()
+//    reranker_output.delete()
+//    evalb_gold.delete()
+//
+//    best_files.each { File best ->
+//        nbest_trees << new File(best.parentFile, best.name.replaceAll(/best$/, /nbest/)).text
+//        reranker_output << best.text
+//        evalb_gold << new File(best.parentFile, best.name.replaceAll(/best$/, /eval/)).text
+//    }
 
-    best_files.each { File best ->
-        nbest_trees << new File(best.parentFile, best.name.replaceAll(/best$/, /nbest/)).text
-        reranker_output << best.text
-        evalb_gold << new File(best.parentFile, best.name.replaceAll(/best$/, /eval/)).text
-    }
+    def outFile = new File(evalb_dir, file_path + '.evalb.txt')
+    def errFile = new File(evalb_dir, file_path + '.err')
+    outFile.parentFile.mkdirs()
 
-    def outFile = new File(sysout_dir, file_path + '.evalb.txt')
-    def errFile = new File(sysout_dir, file_path + '.err')
-
-    def command = ['bllip-parser/evalb/evalb', '-p', 'bllip-parser/evalb/new.prm', evalb_gold, reranker_output]
+    def command = ['bllip-parser/evalb/evalb', '-p', 'bllip-parser/evalb/new.prm', evalb_gold, best_file]
 
     outFile.withOutputStream { stdout ->
         errFile.withOutputStream { stderr ->
@@ -62,7 +64,7 @@ def evalb(String file_path)
         }
     }
 
-    def logpFile = new File(sysout_dir, file_path + '.logp.txt')
+    def logpFile = new File(evalb_dir, file_path + '.logp.txt')
 
     outFile.withReader { evalb_reader ->
 
