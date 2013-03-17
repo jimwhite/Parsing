@@ -93,14 +93,15 @@ def evalb(List<File> best_files, File baseFile)
 
                         def evalb_line = evalb_reader.readLine()
                         def eval_matcher = evalb_line =~ /\s*(\d+)\s+(\d+)\s+(\d+)\s+([.\d]+)\s+([.\d]+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+([.\d]+)/
-                        if (!eval_matcher.matches()) { println "No match for $sentence_id0 ${nbest_trees.path}\n$evalb_line"}
+//                        if (!eval_matcher.matches()) { println "No match for $sentence_id0 ${nbest_trees.path}\n$evalb_line"}
                         def eval_match = eval_matcher[0]
                         def (__, sentence_id1, sent_len, status, recall, precision, matched_bracket, brackets_gold, brackets_test, cross_bracket, word_count, correct_tags, tag_accuracy) = eval_match
 
-                        sentence_id0 = sentence_id0 as Integer
-                        sentence_id1 = sentence_id1 as Integer
+                        // These don't stay in sync when reading the merged report.
+//                        sentence_id0 = sentence_id0 as Integer
+//                        sentence_id1 = sentence_id1 as Integer
                         if (((status as Integer) == 0) /*&& (sentence_id0 == sentence_id1 - 1)*/) {
-                            printer.println "${eval_match.join('\t')}\t$first_p"
+                            printer.println "${eval_match.tail().join('\t')}\t$first_p"
 //                    printer.println "$sentence_id1\t$sent_len\t${sentence_id1-sentence_id0}\t$recall\t$precision\t$first_p"
                         }
                     }
