@@ -1,32 +1,39 @@
 #!/usr/bin/env groovy
 
+workspace_dir = new File('/home2/jimwhite/workspace/parsers')
+
+xcorpus_dir = new File(workspace_dir, 'xcorpus')
+xcorpus_dir.mkdirs()
+
+brown_mrg_dir = new File('/corpora/LDC/LDC99T42/RAW/parsed/mrg/brown')
+
+file_list_file = new File(xcorpus_dir, 'filelist.txt')
+
 bllip_dir = new File('bllip-parser')
 
 tmp_dir = new File('tmp')
 
-sysout_dir = new File(tmp_dir, 'xcorpus')
-
-all_files = sysout_dir.listFiles().grep { it.isDirectory() }.collectMany { it.listFiles().grep { it.name.endsWith ".best" } }
+sysout_dir = new File(tmp_dir, 'parsed')
 
 evalb_dir = new File(tmp_dir, 'evalb')
-
 evalb_dir.delete()
 
-evalb(all_files, new File(evalb_dir, 'xcorpus'))
+all_file_paths = new File(xcorpus_dir, 'filelist.txt').readLines()
 
-all_files.each { File best ->
-    // evalb([new File(tmp_dir, 'xcorpus/cf/cf03.mrg.best')], new File(evalb_dir, 'cf/cf03'))
-    evalb([best], new File(evalb_dir, best.parentFile.name + '/' + (best.name - /\.mrg.best$/)))
-}
+all_file_paths.each { evalb(it) }
 
+//all_file_paths.each { String file_path ->
+//    evalb([new File(tmp_dir, 'xcorpus/cf/cf03.mrg.best')], new File(evalb_dir, 'cf/cf03'))
+//    evalb([new File(sysout_dir, file_path + '.best')], new File(xcorpus_dir, file_path + '.eval'))
+//}
 
 // bllip-parser/evalb/evalb -p bllip-parser/evalb/new.prm tmp/xcorpus/cf/cf05.mrg.eval tmp/xcorpus/cf/cf05.mrg.best
 
-def evalb(List<File> best_files, File baseFile)
+def evalb(String file_path)
 {
-    def nbest_trees = new File(baseFile.parentFile, baseFile.name + '.nbest')
-    def reranker_output = new File(baseFile.parentFile, baseFile.name + '.best')
-    def evalb_gold = new File(baseFile.parentFile, baseFile.name + '.eval')
+    def nbest_trees = new File(sysout_dir, file_path + '.nbest')
+    def reranker_output = new File(sysout_dir, file_path + '.best')
+    def evalb_gold = new File(xcorpus_dir, file_path + '.eval')
 
     baseFile.parentFile.mkdirs()
     nbest_trees.delete()
@@ -39,8 +46,8 @@ def evalb(List<File> best_files, File baseFile)
         evalb_gold << new File(best.parentFile, best.name.replaceAll(/best$/, /eval/)).text
     }
 
-    def outFile = new File(baseFile.parentFile, baseFile.name + '.evalb.txt')
-    def errFile = new File(baseFile.parentFile, baseFile.name + '.err')
+    def outFile = new File(sysout_dir, file_path + '.evalb.txt')
+    def errFile = new File(sysout_dir, file_path + '.err')
 
     def command = ['bllip-parser/evalb/evalb', '-p', 'bllip-parser/evalb/new.prm', evalb_gold, reranker_output]
 
@@ -55,7 +62,7 @@ def evalb(List<File> best_files, File baseFile)
         }
     }
 
-    def logpFile = new File(baseFile.parentFile, baseFile.name + '.logp.txt')
+    def logpFile = new File(sysout_dir, file_path + '.logp.txt')
 
     outFile.withReader { evalb_reader ->
 

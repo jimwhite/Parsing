@@ -29,6 +29,9 @@ brown_mrg_dir = new File('/corpora/LDC/LDC99T42/RAW/parsed/mrg/brown')
 
 tmp_dir = new File('tmp')
 
+sysout_dir = new File(tmp_dir, 'parsed')
+sysout_dir.mkdirs()
+
 /////////////////////////////
 // Condor Command Definitions
 /////////////////////////////
@@ -54,8 +57,8 @@ rerank_parses = gondor.condor_command(new File(bllip_dir, 'second-stage/programs
 file_list_file = new File(xcorpus_dir, 'filelist.txt')
 
 file_list_file.eachLine { String file_path ->
-    def tmp_section_dir = new File(tmp_dir, file_path).parentFile
-    tmp_section_dir.mkdirs()
+    def section_dir = new File(sysout_dir, file_path).parentFile
+    section_dir.mkdirs()
 
     def charniak_input = new File(xcorpus_dir, file_path + ".sent")
     def evalb_gold = new File(xcorpus_dir, file_path + ".eval")
@@ -63,8 +66,8 @@ file_list_file.eachLine { String file_path ->
 //    if (!charniak_input.exists()) convert_ptb(mode:'-c', from:original_ptb, outfile:charniak_input)
 //    if (!evalb_gold.exists()) convert_ptb(mode:'-e', from:original_ptb, outfile:evalb_gold)
 
-    def nbest_output = new File(tmp_dir, file_path + '.nbest')
-    def reranker_output = new File(tmp_dir, file_path + '.best')
+    def nbest_output = new File(sysout_dir, file_path + '.nbest')
+    def reranker_output = new File(sysout_dir, file_path + '.best')
 
     // parse_nbest(model:PARSER_MODEL, input:charniak_input) >> tee(nbest_output) >> rerank_parses(features: RERANKER_FEATURES, weights: RERANKER_WEIGHTS, outfile:reranker_output)
     // charniak_input >> parse_nbest(model:PARSER_MODEL) >> nbest_output >> rerank_parses(features: RERANKER_FEATURES, weights: RERANKER_WEIGHTS) >> reranker_output
