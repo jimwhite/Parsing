@@ -111,7 +111,7 @@ export LDFLAGS
 # PENNWSJTREEBANK=/usr/local/data/Penn3/parsed/mrg/wsj/
 PENNWSJTREEBANK=/corpora/LDC/LDC99T42/RAW/parsed/mrg/wsj
 
-XDATADIR=xcorpus
+XDATADIR=xtrain
 
 # NPARSES is the number of alternative parses to consider for each sentence
 #
@@ -327,7 +327,7 @@ real-clean: clean train-clean
 # TRAIN specifies the location of the trees to be divided into NFOLDS
 # This is defined here to use sections 2-21 of the Penn WSJ treebank.
 #
-TRAIN=$(PENNWSJTREEBANK)/0[2-9]/*mrg $(PENNWSJTREEBANK)/1[0-9]/*mrg $(PENNWSJTREEBANK)/2[0-1]/*mrg $(XDATADIR)/train/*mrg
+TRAIN=$(PENNWSJTREEBANK)/0[2-9]/*mrg $(PENNWSJTREEBANK)/1[0-9]/*mrg $(PENNWSJTREEBANK)/2[0-1]/*mrg $(XDATADIR)/*mrg
 
 # NBESTDIR is the directory that holds the n-best parses for training
 # the reranker.
@@ -348,8 +348,7 @@ nbesttrain: $(NBESTFILES) PARSE TRAIN second-stage/programs/prepare-data/ptb
 # This goal copies and gzips the output of the n-best parser
 # into the appropriate directory for training the reranker.
 #
-.PRECIOUS: $(NBESTDIR)/fold%.gz
-#.INTERMEDIATE: $(NBESTDIR)/fold%.gz
+.INTERMEDIATE: $(NBESTDIR)/fold%.gz
 $(NBESTDIR)/fold%.gz: $(TMP)/fold%/$(NBESTPARSERNICKNAME)$(NPARSES)best
 	mkdir -p $(NBESTDIR)
 	gzip -c $+ > $@
@@ -358,26 +357,22 @@ $(NBESTDIR)/fold%.gz: $(TMP)/fold%/$(NBESTPARSERNICKNAME)$(NPARSES)best
 # with the n-best parser to produce the folds for training the
 # reranker.
 
-.PRECIOUS: $(TMP)/fold%/$(NBESTPARSERNICKNAME)$(NPARSES)best
-#.INTERMEDIATE: $(TMP)/fold%/$(NBESTPARSERNICKNAME)$(NPARSES)best
+.INTERMEDIATE: $(TMP)/fold%/$(NBESTPARSERNICKNAME)$(NPARSES)best
 $(TMP)/fold%/$(NBESTPARSERNICKNAME)$(NPARSES)best: $(TMP)/fold%/DATA $(TMP)/fold%/yield $(NBESTPARSER)
 	$(EXEC_JOB) "$(NBESTPARSER) -l400 -K -N$(NPARSES) $(@D)/DATA/ $(@D)/yield > $@"
 
-.PRECIOUS: $(TMP)/fold%/DATA
-#.INTERMEDIATE: $(TMP)/fold%/DATA
+.INTERMEDIATE: $(TMP)/fold%/DATA
 $(TMP)/fold%/DATA: $(TMP)/fold%/train $(TMP)/fold%/dev $(NBESTTRAINER)
 	mkdir -p $@
 	LC_COLLATE=C; cp $(NBESTPARSERBASEDIR)/DATA/EN/[a-z]* $@
 	$(EXEC_JOB) "$(NBESTTRAINER) "$@" $(@D)/train $(@D)/dev"
 
-.PRECIOUS: $(TMP)/fold%/train
-#.INTERMEDIATE: $(TMP)/fold%/train
+.INTERMEDIATE: $(TMP)/fold%/train
 $(TMP)/fold%/train: second-stage/programs/prepare-data/ptb
 	mkdir -p $(@D)
 	$(EXEC_JOB) "second-stage/programs/prepare-data/ptb -n $(NFOLDS) -x $(patsubst $(TMP)/fold%,%,$(@D)) -e $(TRAIN)  > $@"
 
-.PRECIOUS: $(TMP)/fold%/dev
-#.INTERMEDIATE: $(TMP)/fold%/dev
+.INTERMEDIATE: $(TMP)/fold%/dev
 $(TMP)/fold%/dev: second-stage/programs/prepare-data/ptb
 	mkdir -p $(@D)
 	$(EXEC_JOB) "second-stage/programs/prepare-data/ptb -n $(NFOLDS) -i $(patsubst $(TMP)/fold%,%,$(@D)) -e $(TRAIN)  > $@"
@@ -387,25 +382,21 @@ $(TMP)/fold%/dev: second-stage/programs/prepare-data/ptb
 # 	LC_COLLATE=C; cp $(NBESTPARSERBASEDIR)/DATA/EN/[a-z]* $@
 # 	$(NBESTPARSERBASEDIR)/TRAIN/allScript $@ $(@D)/train $(@D)/dev
 
-#.PRECIOUS: $(TMP)/fold%/yield
 .INTERMEDIATE: $(TMP)/fold%/yield
 $(TMP)/fold%/yield: second-stage/programs/prepare-data/ptb
 	mkdir -p $(@D)
 	$(EXEC_JOB) "second-stage/programs/prepare-data/ptb -n $(NFOLDS) -i $(patsubst $(TMP)/fold%,%,$(@D)) -c $(TRAIN) > $@"
 
-.PRECIOUS: $(NBESTDIR)/section%.gz
-#.INTERMEDIATE: $(NBESTDIR)/section%.gz
+.INTERMEDIATE: $(NBESTDIR)/section%.gz
 $(NBESTDIR)/section%.gz: $(TMP)/section%/$(NBESTPARSERNICKNAME)$(NPARSES)best
 	mkdir -p $(NBESTDIR)
 	gzip -c $+ > $@
 
-#.PRECIOUS: $(TMP)/section%/$(NBESTPARSERNICKNAME)$(NPARSES)best
 .INTERMEDIATE: $(TMP)/section%/$(NBESTPARSERNICKNAME)$(NPARSES)best
 $(TMP)/section%/$(NBESTPARSERNICKNAME)$(NPARSES)best: $(TMP)/section%/yield $(NBESTPARSER)
 	$(EXEC_JOB) "$(NBESTPARSER) -l400 -K -N$(NPARSES) $(NBESTPARSERBASEDIR)/DATA/EN/ $(@D)/yield > $@"
 
-.PRECIOUS: $(TMP)/section%/yield
-#.INTERMEDIATE: $(TMP)/section%/yield
+.INTERMEDIATE: $(TMP)/section%/yield
 $(TMP)/section%/yield: second-stage/programs/prepare-data/ptb
 	mkdir -p $(@D)
 	$(EXEC_JOB) "second-stage/programs/prepare-data/ptb -c $(PENNWSJTREEBANK)/$(patsubst $(TMP)/section%,%,$(@D))/wsj*.mrg  > $@"
