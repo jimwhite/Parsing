@@ -53,6 +53,8 @@ def evalb(String file_path)
 
     def command = ['bllip-parser/evalb/evalb', '-p', 'bllip-parser/evalb/new.prm', evalb_gold, best_file]
 
+    println command
+
     outFile.withOutputStream { stdout ->
         errFile.withOutputStream { stderr ->
             def proc = command.execute()

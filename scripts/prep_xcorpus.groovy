@@ -1,3 +1,8 @@
+@Grab(group = 'edu.stanford.nlp', module = 'stanford-corenlp', version = '1.3.4')
+
+import edu.stanford.nlp.trees.PennTreeReader
+import edu.stanford.nlp.trees.Tree
+
 // James White mailto:jimwhite@uw.edu
 
 /////////////////////////////
@@ -49,10 +54,48 @@ new File(xcorpus_dir, 'filelist.txt').withPrintWriter { filelist_printer ->
         def section_dir = new File(xcorpus_dir, section_name)
         section_dir.mkdirs()
 
+        def cleaned_file = new File(section_dir, file_name)
+        remove_header_comments(original_ptb, cleaned_file)
+
         def charniak_input = new File(section_dir, file_name + ".sent")
         def evalb_gold = new File(section_dir, file_name + ".eval")
 
-        if (!charniak_input.exists()) convert_ptb(mode:'-c', from:original_ptb, outfile:charniak_input)
-        if (!evalb_gold.exists()) convert_ptb(mode:'-e', from:original_ptb, outfile:evalb_gold)
+        if (!charniak_input.exists()) convert_ptb(mode:'-c', from:cleaned_file, outfile:charniak_input)
+        if (!evalb_gold.exists()) convert_ptb(mode:'-e', from:cleaned_file, outfile:evalb_gold)
     }
 }
+
+def remove_header_comments(File original_file, File cleaned_file)
+{
+    cleaned_file.withPrintWriter { printer ->
+        original_file.withReader { Reader reader ->
+            PennTreeReader treereader = new PennTreeReader(reader)
+
+            def count = 0
+
+            Tree tree = null
+
+            while (tree = treereader.readTree()) {
+                count += 1
+                def penn = tree.pennString()
+                penn = penn.replaceAll(/^\(null/, "(")
+//                    def penn = "( " + tree.firstChild().pennString() + ")"
+//                    printer.println (penn)
+//                    printer.println()
+                def leaves = tree.leaves*.value()
+                def preterminals = tree.preTerminalYield()*.value()
+                if (leaves.size() != preterminals.size()) {
+                    println "PRETERMINAL/LEAF MISMATCH ${leaves.size()} ${preterminals.size()}"
+                    println "${count} ${tree.depth()} ${tree.constituents().size()} ${leaves.size()}"
+                    println leaves.join(' ')
+                    println preterminals.join(' ')
+                    println penn
+                }
+                printer << penn
+            }
+
+            println "${cleaned_file.path}\t${cleaned_file.parentFile.name}\t${count}"
+        }
+    }
+}
+
