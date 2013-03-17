@@ -51,9 +51,9 @@ rerank_parses = gondor.condor_command(new File(bllip_dir, 'second-stage/programs
 // Job DAG Definitions
 //////////////////////
 
-file_list = new File(xcorpus_dir, 'filelist.txt').text
+file_list_file = new File(xcorpus_dir, 'filelist.txt')
 
-file_list.each { String file_path ->
+file_list_file.eachLine { String file_path ->
     def tmp_section_dir = new File(tmp_dir, file_path).parentFile
     tmp_section_dir.mkdirs()
 
