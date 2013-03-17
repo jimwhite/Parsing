@@ -1,6 +1,7 @@
 #!/usr/bin/env groovy
 
-sample = args[0] as Integer
+keepers = args[0] as Integer
+skippers = args[1] as Integer
 
 bllip_dir = new File('bllip-parser')
 
@@ -10,20 +11,23 @@ sysout_dir = new File(tmp_dir, 'xcorpus')
 
 all_files = sysout_dir.listFiles().grep { it.isDirectory() }.collectMany { it.listFiles().grep { it.name.endsWith ".best" } }
 
-xcorpus_dir = new File('xcorpus')
-
-training_data_dir = new File(xcorpus_dir, 'train')
-
+training_data_dir = new File('xtrain')
+training_data_dir.delete()
 training_data_dir.mkdirs()
 
 all_files.each { File best ->
     def training_file = new File(training_data_dir, (best.name - ~/\.best$/))
     training_file.withPrintWriter { printer ->
-        def i = sample
+        int i = keepers
+        int j = skippers
         best.eachLine { line ->
-            if (--i < 1) {
+            if (--i >= 0) {
                 printer.println (line.replaceFirst(/^\(S1/, "("))
-                i = sample
+            } else {
+                if (--j < 1) {
+                    i = keepers
+                    j = skippers
+                }
             }
         }
     }
