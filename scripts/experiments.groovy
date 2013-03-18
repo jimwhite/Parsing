@@ -20,7 +20,8 @@ gondor.environment = [PATH:"/usr/kerberos/bin:/usr/local/bin:/bin:/usr/bin:/opt/
 
 workspace_dir = new File('/home2/jimwhite/workspace/parsers')
 
-bllip_dir = new File(workspace_dir, 'bllip-parser')
+// *Don't* use the BLLIP parser in the workspace.  Use the one in this parsing experiment directory.
+bllip_dir = new File('bllip-parser')
 
 xcorpus_dir = new File(workspace_dir, 'xcorpus')
 xcorpus_dir.mkdirs()
