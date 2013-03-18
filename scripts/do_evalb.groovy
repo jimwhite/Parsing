@@ -20,7 +20,25 @@ evalb_dir.delete()
 
 all_file_paths = new File(xcorpus_dir, 'filelist.txt').readLines()
 
-all_file_paths.each { evalb(it) }
+all_file_paths.each { evalb(it, new File(xcorpus_dir, it + '.eval')) }
+
+all_files_name = "all_files"
+
+all_the_gold = new File(tmp_dir, all_files_name + '.eval')
+all_the_best = new File(sysout_dir, all_files_name + '.best')
+all_the_nbest = new File(sysout_dir, all_files_name + '.nbest')
+
+all_the_gold.delete()
+all_the_best.delete()
+all_the_nbest.delete()
+
+all_file_paths.each { file_path ->
+    all_the_gold << new File(xcorpus_dir, file_path + '.eval').text
+    all_the_best << new File(sysout_dir, file_path + '.best').text
+    all_the_nbest << new File(sysout_dir, file_path + '.nbest').text
+}
+
+evalb(all_files_name, all_the_gold)
 
 //all_file_paths.each { String file_path ->
 //    evalb([new File(tmp_dir, 'xcorpus/cf/cf03.mrg.best')], new File(evalb_dir, 'cf/cf03'))
@@ -29,12 +47,12 @@ all_file_paths.each { evalb(it) }
 
 // bllip-parser/evalb/evalb -p bllip-parser/evalb/new.prm tmp/xcorpus/cf/cf05.mrg.eval tmp/xcorpus/cf/cf05.mrg.best
 
-def evalb(String file_path)
+def evalb(String file_path, File evalb_gold)
 {
     def best_file = new File(sysout_dir, file_path + '.best')
     def nbest_trees = new File(sysout_dir, file_path + '.nbest')
 //    def reranker_output = new File(sysout_dir, file_path + '.best')
-    def evalb_gold = new File(xcorpus_dir, file_path + '.eval')
+//    def evalb_gold = new File(xcorpus_dir, file_path + '.eval')
 
 //    baseFile.parentFile.mkdirs()
 //    nbest_trees.delete()
