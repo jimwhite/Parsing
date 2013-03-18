@@ -71,13 +71,12 @@ def evalb(String file_path, File evalb_gold)
 
     def command = ['bllip-parser/evalb/evalb', '-p', 'bllip-parser/evalb/new.prm', evalb_gold, best_file]
 
-    println command
+//     println command
 
     outFile.withOutputStream { stdout ->
         errFile.withOutputStream { stderr ->
             def proc = command.execute()
-            proc.consumeProcessOutput(stdout, stderr)
-            proc.waitFor()
+            proc.waitForProcessOutput(stdout, stderr)
             if (proc.exitValue()) {
                 println "exitValue: ${proc.exitValue()}"
             }
