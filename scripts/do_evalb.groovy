@@ -20,7 +20,7 @@ evalb_dir.delete()
 
 all_file_paths = new File(xcorpus_dir, 'filelist.txt').readLines()
 
-all_file_paths.each { evalb(it, new File(xcorpus_dir, it + '.eval')) }
+//all_file_paths.each { evalb(it, new File(xcorpus_dir, it + '.eval')) }
 
 all_files_name = "all_files"
 
@@ -108,14 +108,18 @@ def evalb(String file_path, File evalb_gold)
                         def (_, parse_count, sentence_id0) = (parse_line =~ /(\d+)[^.]+\.(.+)/)[0]
                         parse_count = parse_count as Integer
 
-                        def first_p = 0
+                        def parse_logp = []
 
                         parse_count.times { i ->
                             def p = tree_reader.readLine() as Double
                             def x = tree_reader.readLine()
 
-                            if (!i) first_p = p
+                            parse_logp << p
                         }
+
+                        def log_sum_of_parse_p = 0
+
+                        def sentence_entropy = calculate_entropy_from_logp(parse_logp /*as double[]*/)
 
                         tree_reader.readLine()  // Should be an empty line
 
@@ -125,11 +129,21 @@ def evalb(String file_path, File evalb_gold)
                         def eval_match = eval_matcher[0]
                         def (__, sentence_id1, sent_len, status, recall, precision, matched_bracket, brackets_gold, brackets_test, cross_bracket, word_count, correct_tags, tag_accuracy) = eval_match
 
+                        precision = precision as Double
+                        recall = recall as Double
+                        sent_len = sent_len as Integer
+
+                        def f_measure = 2 * (precision * recall) / (precision + recall)
+                        def word_entropy = sentence_entropy / sent_len
+
                         // These don't stay in sync when reading the merged report.
 //                        sentence_id0 = sentence_id0 as Integer
-//                        sentence_id1 = sentence_id1 as Integer
+
+                        def sentence_index = (sentence_id1 as int) - 1
+                        def sentence_index_mod10 = sentence_index % 10
+
                         if (((status as Integer) == 0) /*&& (sentence_id0 == sentence_id1 - 1)*/) {
-                            printer.println "${eval_match.tail().join('\t')}\t$first_p"
+                            printer.println "${eval_match.tail().join('\t')}\t-99\t$sentence_index_mod10\t$f_measure\t$sentence_entropy\t$word_entropy\t$log_sum_of_parse_p\t${parse_logp.size()}\t${parse_logp.join('\t')}"
 //                    printer.println "$sentence_id1\t$sent_len\t${sentence_id1-sentence_id0}\t$recall\t$precision\t$first_p"
                         }
                     }
@@ -138,4 +152,26 @@ def evalb(String file_path, File evalb_gold)
         }
     }
 
+}
+
+
+Double calculate_entropy_from_logp(List<Double> parse_p) {
+//    -parse_p.sum { it * Math.log(it) }
+    def log_2 = Math.log(2)
+    def log2_e = Math.log(Math.E) / log_2
+
+    if (parse_p.size()) {
+        // This should do the same thing as reverse.
+        parse_p = parse_p.sort()
+
+        Double h = parse_p.inject(0.0e0) { Double h, Double y ->
+            y = y / log2_e
+            y -= Math.log(-y)
+            Math.max(h, y) + Math.log1p(Math.exp(-Math.abs(h - y)))
+        }
+
+        -(h / log_2)
+    } else {
+        0
+    }
 }
