@@ -15,6 +15,8 @@ tmp_dir = new File('tmp')
 
 sysout_dir = new File(tmp_dir, 'parsed')
 
+LABELS_TO_DELETE = ["TOP", "S1", "-NONE-", ",", ":", "``", "''", "."] as Set
+
 evalb_dir = new File(tmp_dir, 'evalb')
 evalb_dir.delete()
 
@@ -104,17 +106,32 @@ def evalb(String file_path, File evalb_gold)
             }
 
             logpFile.withPrintWriter { printer ->
-                nbest_trees.withReader { tree_reader ->
+                best_file.withReader { best_tree_reader ->
+                evalb_gold.withReader { gold_tree_reader ->
+                nbest_trees.withReader { nbest_tree_reader ->
                     String parse_line
-                    while (parse_line = tree_reader.readLine()) {
+                    while (parse_line = nbest_tree_reader.readLine()) {
                         def (_, parse_count, sentence_id0) = (parse_line =~ /(\d+)[^.]+\.(.+)/)[0]
                         parse_count = parse_count as Integer
+
+                        def best_tree = canonical_tree_string(best_tree_reader.readLine())
+                        def gold_tree = canonical_tree_string(gold_tree_reader.readLine())
+
+                        // Which of the n-best was picked by the reranker?
+                        def best_index = -1
+                        // Which of the n-best (if any) matches the gold annotation.
+                        def gold_index = -1
 
                         def parse_log2_p = []
 
                         parse_count.times { i ->
-                            def p = tree_reader.readLine() as Double
-                            def x = tree_reader.readLine()
+                            def p = nbest_tree_reader.readLine() as Double
+                            def x = canonical_tree_string(nbest_tree_reader.readLine())
+
+
+                            if (best_index < 0 && x == best_tree) best_index = i
+
+                            if (gold_index < 0 && x == gold_tree) gold_index = i
 
                             parse_log2_p << p
                         }
@@ -126,7 +143,7 @@ def evalb(String file_path, File evalb_gold)
 
                         def log2_sentence_entropy = log2_entropy_from_logp(parse_log2_p)
 
-                        tree_reader.readLine()  // Should be an empty line
+                        nbest_tree_reader.readLine()  // Should be an empty line
 
                         def evalb_line = evalb_reader.readLine()
                         def eval_matcher = evalb_line =~ /\s*(\d+)\s+(\d+)\s+(\d+)\s+([.\d]+)\s+([.\d]+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+([.\d]+)/
@@ -136,13 +153,17 @@ def evalb(String file_path, File evalb_gold)
 
                         precision = precision as Double
                         recall = recall as Double
+                        tag_accuracy = tag_accuracy as Double
+
                         sent_len = sent_len as Integer
 
-                        def f_measure = 2 * (precision * recall) / (precision + recall)
+                        def f_measure = (precision + recall) ? 2 * (precision * recall) / (precision + recall) : 0
                         def sentence_entropy = Math.pow(2, log2_sentence_entropy)
                         def word_entropy = sentence_entropy / sent_len
                         def log2_word_entropy = log2_sentence_entropy - (Math.log(sent_len) / log_2)
                         def per_word_log2_entropy = log2_sentence_entropy / sent_len
+
+                        if (f_measure == 100 && tag_accuracy == 100 && gold_index < 0) println "Didn't find gold for $sentence_id1\nbest: $best_tree\ngold: $gold_tree\n"
 
                         // These don't stay in sync when reading the merged report.
 //                        sentence_id0 = sentence_id0 as Integer
@@ -151,16 +172,118 @@ def evalb(String file_path, File evalb_gold)
                         def sentence_index_mod10 = sentence_index % 10
 
                         if (((status as Integer) == 0) /*&& (sentence_id0 == sentence_id1 - 1)*/) {
-                            printer.println "${eval_match.tail().join('\t')}\t-99\t$sentence_index_mod10\t$f_measure\t$log2_sentence_entropy\t$per_word_log2_entropy\t$log2_word_entropy\t$sentence_entropy\t$word_entropy\t$log2_sum_of_parse_p\t${parse_log2_p.size()}\t${parse_log2_p.join('\t')}"
+                            printer.println "${eval_match.tail().join('\t')}\t-99\t$sentence_index_mod10\t$f_measure\t$log2_sentence_entropy\t$per_word_log2_entropy\t$log2_word_entropy\t$sentence_entropy\t$word_entropy\t$best_index\t$gold_index\t$log2_sum_of_parse_p\t${parse_log2_p.size()}\t${parse_log2_p.join('\t')}"
 //                    printer.println "$sentence_id1\t$sent_len\t${sentence_id1-sentence_id0}\t$recall\t$precision\t$first_p"
                         }
                     }
-                }
+                } // nbest_tree_reader
+                } // best_tree_reader
+                } // gold_tree_reader
             }
         }
     }
-
 }
+
+def canonical_tree_string(String tree)
+{
+    def sexpList = readSexpList(new StringReader(tree))
+
+    if (sexpList.size() == 1) {
+        clean_tree(sexpList.head()).toString()
+    } else {
+        System.err.println("Didn't get exactly one tree from readSexpList.\n" + sexpList)
+        tree
+    }
+}
+
+def clean_tree(tree)
+{
+    if (tree instanceof List) {
+        if (tree.head() in LABELS_TO_DELETE) {
+            if (tree.size() == 2) {
+                if (tree[1] instanceof List) {
+                    tree = clean_tree(tree[1])
+                } else {
+                    tree = []
+                }
+            } else {
+//                System.err.println("Tried to delete label ${tree.head()} but length is ${tree.size()} for:\n" + tree)
+                tree = tree.tail().collect { clean_tree(it) }.grep { it }
+
+                if (tree.size() == 1) tree = tree.head()
+//                println tree
+            }
+        } else {
+            tree = [clean_label(tree.head())] + tree.tail().collect { clean_tree(it) }.grep { it }
+
+            if (tree.size() == 1) tree = []
+        }
+    }
+
+    tree
+}
+
+def clean_label(String label)
+{
+    label = label.replaceFirst(/[-=].*$/, '')
+
+    // EQ_LABEL ADVP PRT
+    if (label == 'PRT') label = 'ADVP'
+
+    label
+}
+
+def readSexpList(Reader reader)
+{
+    // This grammar has single quotes in token names.
+//    final tokenDelimiters = "\"''()\t\r\n "
+//    final tokenDelimiters = "\"()\t\r\n "
+    // No quoted strings at all for these s-exprs.
+    final tokenDelimiters = "()\t\r\n "
+
+    def stack = []
+    def sexps = []
+
+    def cint = reader.read()
+
+    loop:
+    while (cint >= 0) {
+        Character c = cint as Character
+        switch (c) {
+
+            case ')' :
+                if (stack.size() < 1) break loop
+                def t = stack.pop()
+                t << sexps
+                sexps = t
+                cint = reader.read()
+                break
+
+            case '(':
+
+                stack.push(sexps)
+                sexps = []
+                cint = reader.read()
+                break
+
+            default:
+                if (c.isWhitespace()) {
+                    cint = reader.read()
+                } else {
+                    def token = new StringBuilder()
+                    token.append(c)
+                    while ((cint = reader.read()) >= 0) {
+                        if (tokenDelimiters.indexOf(cint) >= 0) break
+                        token.append(cint as Character)
+                    }
+                    sexps << token.toString()
+                }
+        }
+    }
+
+    return sexps
+}
+
 
 /*
 [[0.5,0.5],[0.4, 0.1, 0.5]].each { l ->
@@ -229,9 +352,6 @@ Double log2_sum(List<Double> summands) {
     def log2_e = Math.log(Math.E) / log_2
 
     if (summands.size()) {
-//        This should do the same thing as reverse.
-//        summands = summands.sort()
-
         // We assume list is already sorted so we go from smallest to largest.
         Double t = summands.tail().inject(summands.head() / log2_e) { Double z, Double x ->
             x = x / log2_e
