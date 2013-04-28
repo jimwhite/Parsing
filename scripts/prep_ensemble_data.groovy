@@ -8,9 +8,6 @@ split_wsj_data_dir = new File(args[1])
 split_wsj_data_dir.mkdirs()
 split_wsj_prefix = wsj_data.name - ~/\.mrg$/
 
-//LABELS_TO_DELETE = ["TOP", "S1", "-NONE-", ",", ":", "``", "''", "."] as Set
-LABELS_TO_DELETE = [] as Set
-
 total_sentences = 0
 
 wsj_data.withReader { reader ->
@@ -37,6 +34,67 @@ wsj_data.withReader { wsj ->
         }
     }
 }
+
+def read_one_sexp(Reader reader)
+{
+    // This grammar has single quotes in token names.
+//    final tokenDelimiters = "\"''()\t\r\n "
+//    final tokenDelimiters = "\"()\t\r\n "
+    // No quoted strings at all for these s-exprs.
+    final tokenDelimiters = "()\t\r\n "
+
+    def stack = []
+    def sexps = []
+
+    def cint = reader.read()
+
+    loop:
+    while (cint >= 0 && (stack.size() > 1 || sexps.size() < 1)) {
+        Character c = cint as Character
+        switch (c) {
+
+            case ')' :
+                if (stack.size() < 1) break loop
+                def t = stack.pop()
+                t << sexps
+                sexps = t
+                cint = reader.read()
+                break
+
+            case '(':
+
+                stack.push(sexps)
+                sexps = []
+                cint = reader.read()
+                break
+
+            default:
+                if (c.isWhitespace()) {
+                    cint = reader.read()
+                } else {
+                    def token = new StringBuilder()
+                    token.append(c)
+                    while ((cint = reader.read()) >= 0) {
+                        if (tokenDelimiters.indexOf(cint) >= 0) break
+                        token.append(cint as Character)
+                    }
+                    sexps << token.toString()
+                }
+        }
+    }
+
+    return sexps
+}
+
+def sexp_to_string(sexp)
+{
+    (sexp instanceof List) ? "(${sexp.collect { sexp_to_string(it) }.join(' ')})" : sexp.toString()
+}
+
+// EOF
+
+//LABELS_TO_DELETE = ["TOP", "S1", "-NONE-", ",", ":", "``", "''", "."] as Set
+LABELS_TO_DELETE = [] as Set
 
 class MultiFileLineIterator implements Iterator<String>
 {
@@ -117,58 +175,3 @@ def clean_label(String label)
     label
 }
 
-def read_one_sexp(Reader reader)
-{
-    // This grammar has single quotes in token names.
-//    final tokenDelimiters = "\"''()\t\r\n "
-//    final tokenDelimiters = "\"()\t\r\n "
-    // No quoted strings at all for these s-exprs.
-    final tokenDelimiters = "()\t\r\n "
-
-    def stack = []
-    def sexps = []
-
-    def cint = reader.read()
-
-    loop:
-    while (cint >= 0 && (stack.size() > 1 || sexps.size() < 1)) {
-        Character c = cint as Character
-        switch (c) {
-
-            case ')' :
-                if (stack.size() < 1) break loop
-                def t = stack.pop()
-                t << sexps
-                sexps = t
-                cint = reader.read()
-                break
-
-            case '(':
-
-                stack.push(sexps)
-                sexps = []
-                cint = reader.read()
-                break
-
-            default:
-                if (c.isWhitespace()) {
-                    cint = reader.read()
-                } else {
-                    def token = new StringBuilder()
-                    token.append(c)
-                    while ((cint = reader.read()) >= 0) {
-                        if (tokenDelimiters.indexOf(cint) >= 0) break
-                        token.append(cint as Character)
-                    }
-                    sexps << token.toString()
-                }
-        }
-    }
-
-    return sexps
-}
-
-def sexp_to_string(sexp)
-{
-    (sexp instanceof List) ? "(${sexp.collect { sexp_to_string(it) }.join(' ')})" : sexp.toString()
-}
