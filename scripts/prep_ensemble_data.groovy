@@ -29,7 +29,7 @@ println split_N * ensemble_K
 
 wsj_data.withReader { wsj ->
     ensemble_K.times { split_i ->
-        new File(split_wsj_data_dir, String.format('wsj_train%02d.mrg', split_i)).withPrintWriter { w ->
+        new File(split_wsj_data_dir, String.format("${split_wsj_prefix}_%02d.mrg", split_i)).withPrintWriter { w ->
             split_N.times { w.println sexp_to_string(read_one_sexp(wsj)) }
         }
     }
