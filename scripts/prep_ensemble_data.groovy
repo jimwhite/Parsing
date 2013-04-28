@@ -1,3 +1,4 @@
+#!/usr/bin/env groovy
 
 // Use `ls` to make sure file names are in sorted order which we need for repeatability.
 // for f in 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 ; do cat `ls /corpora/LDC/LDC99T42/RAW/parsed/mrg/wsj/$f/*.mrg` >> tmp/wsj_train.mrg ; done
