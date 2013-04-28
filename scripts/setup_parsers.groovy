@@ -47,9 +47,10 @@ private void copy_files(File src_dir, File dst_dir) {
 }
 
 private void create_symlink(File src_file, File dst_file) {
-    def ln_proc = "ln -s $src_file $dst_file".execute()
+    def cmd = "ln -s ${src_file.absolutePath} $dst_file"
+    def ln_proc = cmd.execute()
     if (ln_proc.waitFor()) {
-        println "Error: 'ln -s $src_file $dst_file' = ${ln_proc.exitValue()}"
+        println "Error: '$cmd' = ${ln_proc.exitValue()}"
     }
 }
 
