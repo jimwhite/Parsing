@@ -19,7 +19,7 @@ ensemble_K.times { setup_parser(it) }
 def setup_parser(parser_i)
 {
     def parser_dir = new File(parser_ensemble_dir, String.format('parser_%02d', parser_i))
-    parser_dir.mkdir()
+    // parser_dir.mkdir()
     copy_files(bllip_parser_dir, parser_dir)
 
     def xtrain_dir = new File(parser_dir, 'xtrain')
@@ -38,9 +38,11 @@ def setup_parser(parser_i)
 }
 
 private void copy_files(File src_dir, File dst_dir) {
-    def proc = "cp -RLp $src_dir/ $dst_dir".execute()
+//    String cmd = System.getProperty('os.name') == 'Mac OS X' ? "cp -RLp $src_dir/ $dst_dir" :   "cp -RLp $src_dir $dst_dir"
+    String cmd = "cp -RLp $src_dir $dst_dir"
+    def proc = cmd.execute()
     if (proc.waitFor()) {
-        print "Error: 'cp -RLp $src_dir/ $dst_dir' = ${proc.exitValue()}"
+        print "Error: '$cmd' = ${proc.exitValue()}"
     }
 }
 
