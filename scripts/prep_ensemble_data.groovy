@@ -1,34 +1,40 @@
 
-// for f in 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 ; do cat /corpora/LDC/LDC99T42/RAW/parsed/mrg/wsj/$f/*.mrg >> tmp/wsj_train.mrg ; done
+// Use `ls` to make sure file names are in sorted order which we need for repeatability.
+// for f in 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 ; do cat `ls /corpora/LDC/LDC99T42/RAW/parsed/mrg/wsj/$f/*.mrg` >> tmp/wsj_train.mrg ; done
 
-wsj_data_dir = new File('/corpora/LDC/LDC99T42/RAW/parsed/mrg/wsj')
+wsj_data = new File(args[0])
 
-wsj_data_files = (2..21).collectMany { new File(wsj_data_dir, it as String).listFiles().grep { it.name =~ /.+\.mrg$/ } }
-
-println wsj_data_files.size()
-println wsj_data_files
-
-split_wsj_data_dir = new File('tmp/split_wsj')
+split_wsj_data_dir = new File(args[1])
 split_wsj_data_dir.mkdirs()
+split_wsj_prefix = wsj_data.name - ~/\.mrg$/
 
-total_lines = 0
+//LABELS_TO_DELETE = ["TOP", "S1", "-NONE-", ",", ":", "``", "''", "."] as Set
+LABELS_TO_DELETE = [] as Set
 
-new MultiFileLineIterator(files:wsj_data_files.iterator()).each { if (it) total_lines += 1 }
+total_sentences = 0
 
-println total_lines
+wsj_data.withReader { reader ->
+    def sexp = read_one_sexp(reader)
+    while (sexp) {
+        total_sentences += 1
+        sexp = read_one_sexp(reader)
+    }
+}
+
+println total_sentences
 
 ensemble_K = 20
 
-split_N = (total_lines / ensemble_K).intValue()
+split_N = (total_sentences / ensemble_K).intValue()
 
 println split_N
 println split_N * ensemble_K
 
-wsj_lines = new MultiFileLineIterator(files:wsj_data_files.iterator())
-
-ensemble_K.times { split_i ->
-    new File(split_wsj_data_dir, "wsj_${split_i}.mrg").withPrintWriter { w ->
-        split_N.times {if (wsj_lines.hasNext()) w.println wsj_lines.next() }
+wsj_data.withReader { wsj ->
+    ensemble_K.times { split_i ->
+        new File(split_wsj_data_dir, String.format('wsj_train%02d.mrg', split_i)).withPrintWriter { w ->
+            split_N.times { w.println sexp_to_string(read_one_sexp(wsj)) }
+        }
     }
 }
 
@@ -62,7 +68,56 @@ class MultiFileLineIterator implements Iterator<String>
     }
 }
 
-def readSexpList(Reader reader)
+def canonical_tree_string(Reader reader)
+{
+    def sexpList = read_one_sexp(reader)
+
+    if (sexpList.size() == 1) {
+        clean_tree(sexpList.head())
+    } else {
+        System.err.println("Didn't get exactly one tree from read_one_sexp.\n" + sexpList)
+        tree
+    }
+}
+
+def clean_tree(tree)
+{
+    if (tree instanceof List) {
+        if (tree.head() in LABELS_TO_DELETE) {
+            if (tree.size() == 2) {
+                if (tree[1] instanceof List) {
+                    tree = clean_tree(tree[1])
+                } else {
+                    tree = []
+                }
+            } else {
+//                System.err.println("Tried to delete label ${tree.head()} but length is ${tree.size()} for:\n" + tree)
+                tree = tree.tail().collect { clean_tree(it) }.grep { it }
+
+                if (tree.size() == 1) tree = tree.head()
+//                println tree
+            }
+        } else {
+            tree = [clean_label(tree.head())] + tree.tail().collect { clean_tree(it) }.grep { it }
+
+            if (tree.size() == 1) tree = []
+        }
+    }
+
+    tree
+}
+
+def clean_label(String label)
+{
+    label = label.replaceFirst(/[-=].*$/, '')
+
+    // EQ_LABEL ADVP PRT
+    if (label == 'PRT') label = 'ADVP'
+
+    label
+}
+
+def read_one_sexp(Reader reader)
 {
     // This grammar has single quotes in token names.
 //    final tokenDelimiters = "\"''()\t\r\n "
@@ -76,7 +131,7 @@ def readSexpList(Reader reader)
     def cint = reader.read()
 
     loop:
-    while (cint >= 0) {
+    while (cint >= 0 && (stack.size() > 1 || sexps.size() < 1)) {
         Character c = cint as Character
         switch (c) {
 
@@ -111,4 +166,9 @@ def readSexpList(Reader reader)
     }
 
     return sexps
+}
+
+def sexp_to_string(sexp)
+{
+    (sexp instanceof List) ? "(${sexp.collect { sexp_to_string(it) }.join(' ')})" : sexp.toString()
 }
