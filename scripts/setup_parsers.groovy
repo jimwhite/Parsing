@@ -32,7 +32,7 @@ def setup_parser(parser_i)
 
     def xtune_dir = new File(parser_dir, 'xtune')
     xtune_dir.mkdir()
-    File src_file = mrg_files[(parser_i + (mrg_files.size() / 2).intValue()) % mrg_files.size()]
+    File src_file = mrg_files[(parser_i + ((mrg_files.size() + training_J)/ 2).intValue()) % mrg_files.size()]
     File dst_file = new File(xtune_dir, src_file.name)
     create_symlink(src_file, dst_file)
 }
