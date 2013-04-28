@@ -27,14 +27,17 @@ def setup_parser(parser_i)
     training_J.times { train_i ->
         File src_file = mrg_files[(train_i + parser_i) % mrg_files.size()]
         File dst_file = new File(xtrain_dir, src_file.name)
-        create_symlink(src_file, dst_file)
+        // Don't use symlinks cuz second-stage/programs/prepare-data/ptb won't cope with 'em.
+        //        create_symlink(src_file, dst_file)
+        copy_files(src_file, dst_file)
     }
 
     def xtune_dir = new File(parser_dir, 'xtune')
     xtune_dir.mkdir()
     File src_file = mrg_files[(parser_i + ((mrg_files.size() + training_J)/ 2).intValue()) % mrg_files.size()]
     File dst_file = new File(xtune_dir, src_file.name)
-    create_symlink(src_file, dst_file)
+//    create_symlink(src_file, dst_file)
+    copy_files(src_file, dst_file)
 }
 
 private void copy_files(File src_dir, File dst_dir) {
