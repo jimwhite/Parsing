@@ -327,7 +327,8 @@ real-clean: clean train-clean
 # TRAIN specifies the location of the trees to be divided into NFOLDS
 # This is defined here to use sections 2-21 of the Penn WSJ treebank.
 #
-TRAIN=$(PENNWSJTREEBANK)/0[2-9]/*mrg $(PENNWSJTREEBANK)/1[0-9]/*mrg $(PENNWSJTREEBANK)/2[0-1]/*mrg $(XDATADIR)/*mrg
+# TRAIN=$(PENNWSJTREEBANK)/0[2-9]/*mrg $(PENNWSJTREEBANK)/1[0-9]/*mrg $(PENNWSJTREEBANK)/2[0-1]/*mrg $(XDATADIR)/*mrg
+TRAIN=$(XDATADIR)/*mrg
 
 # NBESTDIR is the directory that holds the n-best parses for training
 # the reranker.
