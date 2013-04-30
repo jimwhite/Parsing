@@ -50,6 +50,9 @@ def evalb_readers = parser_evalb_file_list.collect { evalb_reader(it) }
 
 def F_SCORE_FIELD = 0
 def ID_FIELD = 1
+def SENT_LEN_FIELD = 2
+def STATUS_FIELD = 3
+def TAG_ACC_FIELD = 12
 
 sepa_file.withPrintWriter { printer ->
     List<List> evaluations
@@ -63,14 +66,24 @@ sepa_file.withPrintWriter { printer ->
         }
 
         def f_scores = evaluations.collect { it[F_SCORE_FIELD] }
-        f_scores.remove(100 as Double)
-        if (f_scores.size() != ensemble_K - 1) {
-            println "Didn't get K-1 f-scores after removing a 100% $f_scores"
-            evaluations.each { println it }
-            break
-        }
-        def sepa = f_scores.sum() / (ensemble_K - 1)
-        printer.println "${evaluations[0][ID_FIELD]}\t$sepa"
+
+//        f_scores.remove(100 as Double)
+//        if (f_scores.size() != ensemble_K - 1) {
+//            println "Didn't get K-1 f-scores after removing a 100% $f_scores"
+//            evaluations.each { println it }
+//            break
+//        }
+
+        // We sum all the f-scores but one of them is our "gold" and so will be 100%.
+        def sepa = (f_scores.sum() - 100) / (ensemble_K - 1)
+
+        def tag_accuracies = evaluations.collect { it[TAG_ACC_FIELD] }
+        def sepa_tag = (tag_accuracies.sum() - 100) / (ensemble_K - 1)
+
+        def len0 = evaluations[0][SENT_LEN_FIELD]
+        def status = evaluations.sum { it[STATUS_FIELD] }
+
+        printer.println "$sepa\t$sepa_tag\t$id0\t$len0\t$status\t${f_scores.join('\t')}"
     }
 }
 
