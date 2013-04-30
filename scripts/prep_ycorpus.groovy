@@ -4,9 +4,9 @@ brown_corpus_file = new File(args[0])
 
 ycorpus_dir = new File(args[1])
 
-train_file = new File(ycorpus_dir, 'train.mrg')
-test_file  = new File(ycorpus_dir, 'test.mrg')
-dev_file = new File(ycorpus_dir, 'dev.mrg')
+train_file = new File(ycorpus_dir, 'brown-train.mrg')
+test_file  = new File(ycorpus_dir, 'brown-test.mrg')
+dev_file = new File(ycorpus_dir, 'brown-dev.mrg')
 
 //file_list = new File(xcorpus_dir, 'filelist.txt').readLines()
 //println file_list
@@ -22,21 +22,24 @@ brown_corpus_file.withReader { reader ->
             switch (total_sentences % 10) {
                 case 8:
                     test_writer.println sexp_to_string(sexp)
+                    test_writer.println()
                     break
                 case 9:
                     dev_writer.println sexp_to_string(sexp)
+                    dev_writer.println()
                     break
                 default:
                     train_writer.println sexp_to_string(sexp)
+                    train_writer.println()
                     break
             }
-            if (total_sentences <30) println "\nSentence $total_sentences"
-            if (total_sentences % 100 == 0) println "\nSentence $total_sentences"
+
+//            if (total_sentences % 100 == 0) println "\nSentence $total_sentences"
+
             total_sentences += 1
-            if (total_sentences == 24) {
-                println "Troublesome sentence next!"
-            }
+
             sexp = read_one_sexp(reader)
+
 //            while (!sexp && reader.ready()) {
 //                sexp = read_one_sexp(reader)
 //                if (sexp) {
@@ -111,7 +114,7 @@ def read_one_sexp(Reader reader)
         }
     }
 
-    return sexps
+    return sexps ? sexps[0] : null
 }
 
 def sexp_to_string(sexp)
