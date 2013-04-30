@@ -23,19 +23,13 @@ workspace_dir = new File('/home2/jimwhite/workspace/parsers')
 // Each parser has it's own binary, but we'll use the one in base for them all.
 bllip_dir = new File(workspace_dir, 'base/bllip-parser')
 
-ensemble_dir = new File('ensemble')
+ensemble_dir = new File(workspace_dir, 'ensemble')
 
 ycorpus_dir = new File(workspace_dir, 'ycorpus')
 
 /////////////////////////////
 // Condor Command Definitions
 /////////////////////////////
-
-PARSER_MODEL=new File(bllip_dir, 'first-stage/DATA/EN/')
-MODELDIR=new File(bllip_dir, 'second-stage/models/ec50spnonfinal')
-ESTIMATORNICKNAME='cvlm-l1c10P1'
-RERANKER_WEIGHTS = new File(MODELDIR, ESTIMATORNICKNAME + '-weights.gz')
-RERANKER_FEATURES = new File(MODELDIR, 'features.gz')
 
 // first-stage/PARSE/parseIt -l399 -N50 first-stage/DATA/EN/ $*
 parse_nbest = gondor.condor_command(new File(bllip_dir, 'first-stage/PARSE/parseIt'), ['-K.flag', '-l400.flag', '-N50.flag', 'model.in', 'input.in'])
@@ -49,6 +43,13 @@ rerank_parses = gondor.condor_command(new File(bllip_dir, 'second-stage/programs
 
 ['brown-train.mrg'].each { String file_path ->
     ensemble_dir.eachFileMatch(~/parser_.*/) { File parser_dir ->
+        def PARSER_MODEL=new File(parser_dir, 'first-stage/DATA/EN/')
+        def MODELDIR=new File(parser_dir, 'second-stage/models/ec50spnonfinal')
+        def ESTIMATORNICKNAME='cvlm-l1c10P1'
+        def RERANKER_WEIGHTS = new File(MODELDIR, ESTIMATORNICKNAME + '-weights.gz')
+        def RERANKER_FEATURES = new File(MODELDIR, 'features.gz')
+
+
         def sysout_dir = new File(parser_dir, 'tmp/parsed')
         sysout_dir.deleteDir()
         sysout_dir.mkdirs()
