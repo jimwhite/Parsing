@@ -84,7 +84,9 @@ def prep_st_sorted_sepa(File stats_file, field_idx, endness, int percentage, bes
     stats.sort(true) { endness == "lo" ? it[field_idx] : -it[field_idx] }
 
     def keeper_count = Math.round(stats.size() * (percentage / (100 as float))) as Integer
-
+    
+    if (keeper_count < 1) return false
+    
     def keeper_stats = stats.take(keeper_count)
 
     // This is only difference?  ID field is in different column (for now anyhow - maybe I should change it...).
