@@ -40,21 +40,23 @@ def setup_parser(parser_i)
     copy_files(src_file, dst_file)
 }
 
-private void copy_files(File src_dir, File dst_dir) {
+static def copy_files(File src_dir, File dst_dir) {
 //    String cmd = System.getProperty('os.name') == 'Mac OS X' ? "cp -RLp $src_dir/ $dst_dir" :   "cp -RLp $src_dir $dst_dir"
     String cmd = "cp -RLp $src_dir $dst_dir"
     def proc = cmd.execute()
     if (proc.waitFor()) {
         print "Error: '$cmd' = ${proc.exitValue()}"
     }
+    proc.exitValue()
 }
 
-private void create_symlink(File src_file, File dst_file) {
+static def create_symlink(File src_file, File dst_file) {
     def cmd = "ln -s ${src_file.absolutePath} $dst_file"
     def ln_proc = cmd.execute()
     if (ln_proc.waitFor()) {
         println "Error: '$cmd' = ${ln_proc.exitValue()}"
     }
+    ln_proc.exitValue()
 }
 
 /*
