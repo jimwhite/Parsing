@@ -137,7 +137,7 @@ Log         = /tmp/${user}_${script_name}.log
 ${invars.contains('infile') ? 'Input       = \$(_MyJobInput)' : ''}
 Output 		= \$(_MyJobOutput)
 Error	    = \$(_MyJobError)
-Request_Memory=6*1029
+Request_Memory=5*1029
 #Periodic_Remove = (RemoteWallClockTime - CumulativeSuspensionTime) > 1800)
 Notification=Error
 Queue
@@ -236,7 +236,7 @@ Log         = /tmp/${user}_${script_name}.log
 ${invars.contains('infile') ? 'Input       = \$(_MyJobInput)' : ''}
 Output 		= \$(_MyJobOutput)
 Error	    = \$(_MyJobError)
-Request_Memory = 6*1024
+Request_Memory = 5*1024
 #Periodic_Remove = (RemoteWallClockTime - CumulativeSuspensionTime) > 1800)
 Queue
 """
