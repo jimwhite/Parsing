@@ -1,4 +1,4 @@
 Parsing
 =======
 
-Statistical parsing experiments for active learning and self-training
+Statistical parsing experiments for parse quality assessment and selective self-training.
