@@ -1,0 +1,2 @@
+// include 'parsing'
+include 'corpora', 'corpora:anydomain', 'corpora:anydomain:WSJ'
