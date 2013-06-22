@@ -5,17 +5,17 @@ project("anydomain:WSJ") {
   def section_files = { it.collect { section_num -> new File(WSJ_dir, section_file_name(section_num)) } }
   def check_output_files = { it.each { mrg_file -> if (!mrg_file.exists()) throw new FileNotFoundException("Missing corpus file: $mrg_file") } }
   
-  task training_MRG { 
+  task train_MRG {
      outputs.files(section_files(2..21)) 
      doFirst { check_output_files(outputs.files) }
   }
 
-  task testing_MRG {
+  task test_MRG {
      outputs.files(section_files([0])) 
      doFirst { check_output_files(outputs.files) }
   }
 
-  task tuning_MRG {
+  task tune_MRG {
      outputs.files(section_files([1]))
      doFirst { check_output_files(outputs.files) }
   }
@@ -24,7 +24,25 @@ project("anydomain:WSJ") {
 task list_WSJ {
     def corpus = "anydomain:WSJ"
 
-    ["training_MRG", "testing_MRG", "tuning_MRG"].each { split ->
+    ["train_MRG", "test_MRG", "tune_MRG"].each { split ->
+        dependsOn "$corpus:$split"
+        doLast {
+            println "WSJ $split files"
+            project(corpus).tasks[split].outputs.files.each { println it }
+        }
+    }
+}
+
+
+task list << {
+//    project.subprojects.each { name, corpus -> println name }
+    project.subprojects.each { println it }
+}
+
+task list_WSJ_MRG {
+    def corpus = ":corpora:anydomain:WSJ"
+
+    ["train_MRG", "test_MRG", "tune_MRG"].each { split ->
         dependsOn "$corpus:$split"
         doLast {
             println "WSJ $split files"
