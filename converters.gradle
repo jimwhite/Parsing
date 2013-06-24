@@ -72,7 +72,7 @@ task converter_user(dependsOn:convert_many_to_sent) {
 //    convert_many_to_sent.outputs.files.each { println it }
 }
 
-task converter_evalb_user(dependsOn:convert_many_to_evalb) {
+task converter_evalb_user(dependsOn:convert_many_to_evalb) << {
     println "evalb outputs"
     outputs.files(convert_many_to_evalb.outputs.files)
     convert_many_to_evalb.outputs.files.each { println it }

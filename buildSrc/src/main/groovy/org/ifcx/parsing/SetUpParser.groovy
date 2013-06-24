@@ -4,6 +4,7 @@ import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputDirectory
 import org.gradle.api.tasks.OutputDirectory
+import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
 
 class SetUpParser extends DefaultTask {
@@ -13,12 +14,14 @@ class SetUpParser extends DefaultTask {
     @Input
     String corpus_name
 
-    @OutputDirectory
+//    @OutputDirectory
     File parser_dir
 
-    def train_mrg
+    @OutputFile
+    File train_all_mrg
 
-    def tune_mrg
+    @OutputFile
+    File tune_all_mrg
 
     @TaskAction
     void setup()
@@ -43,7 +46,10 @@ class SetUpParser extends DefaultTask {
 
 //        [[corpus_tasks.'train_MRG', 'train'], [corpus_tasks.'tune_MRG', 'tune'], [corpus_tasks.'test_MRG', 'test']].each { corpus_task, split_name ->
 
-        ['train', 'tune', 'test'].each { split_name ->
+//        train_all_mrg = new File(parser_dir, "tmp/train-all.mrg")
+//        tune_all_mrg = new File(parser_dir, "tmp/tune-all.mrg")
+
+        [['train', train_all_mrg], ['tune', tune_all_mrg] ].each { split_name, combined_mrg_file ->
             def corpus_task = corpus_tasks[split_name + '_MRG']
             def mrg_source_files = corpus_task.outputs.files
 
@@ -54,7 +60,7 @@ class SetUpParser extends DefaultTask {
                     }
                 }
 
-                concat(destfile:new File(tmpDir, split_name + '-all.mrg'), eol:'unix') {
+                concat(destfile: combined_mrg_file, eol:'unix') {
                     mrg_source_files.each { f ->
                         filelist(dir:f.parentFile) { file(name:f.name) }
                     }
@@ -80,6 +86,13 @@ class SetUpParser extends DefaultTask {
 //                    include(name:'train_all.condor')
 //                }
 //            }
+
+//        def combined_mrg_file = new File(tmpDir, split_name + '-all.mrg')
+//
+//        switch (split_name) {
+//            case 'train':  train_all_mrg = combined_mrg_file ; break
+//            case 'tune':  tune_all_mrg = combined_mrg_file ; break
+//        }
 
 //        if (!parser_dir.exists()) {
 //            if (!parser_dir.mkdirs()) throw new IOException("Failed to create experiment/parser dir $parser_dir")

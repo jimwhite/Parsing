@@ -1,3 +1,4 @@
+import org.ifcx.parsing.Parser
 import org.ifcx.parsing.SetUpParser
 
 
@@ -5,6 +6,10 @@ apply plugin: 'base'
 
 apply from: 'converters.gradle'
 
+project('wsj_only') {
+    def parser = new Parser(_project:project, _corpus_name:':corpora:anydomain:WSJ', _base_parser_dir: file('../bllip-parser'))
+    parser.createTasks()
+}
 
 task setup_wsj_only (type:SetUpParser) {
     dependsOn 'corpora:anydomain:WSJ:train_MRG'
@@ -16,17 +21,30 @@ task setup_wsj_only (type:SetUpParser) {
     parser_dir = file('wsj_only')
 }
 
-task train_wsj_only {
-    dependsOn setup_wsj_only
+//task train_wsj_only(type:Exec) {
+//    dependsOn setup_wsj_only
+//
+//    def model_dir = 'first-stage/DATA/EN'
+//
+//    outputs.files model_dir
+//
+//    // first-stage/TRAIN/allScript first-stage/DATA/EN tmp/train-all.mrg tmp/dev-all.mrg
+//    workingDir setup_wsj_only.parser_dir
+//    executable 'first-stage/TRAIN/allScript'
+//    args([model_dir, setup_wsj_only.train_all_mrg, setup_wsj_only.tune_all_mrg])
+//
+//    ignoreExitValue false
+//}
 
-    doLast {
-        def exec = task train_wsj_only_exec (type:Exec) {
-            // first-stage/TRAIN/allScript first-stage/DATA/EN tmp/train-all.mrg tmp/dev-all.mrg
-            executable 'first-stage/TRAIN/allScript'
-            setArgs('first-stage/DATA/EN', setup_wsj_only.train_MRG, setup_wsj_only.tune_MRG)
-        }
+
+task train_wsj_only(dependsOn:setup_wsj_only) << {
+    ant.exec(executable:'first-stage/TRAIN/allScript', dir:setup_wsj_only.parser_dir, failonerror:true) {
+        arg(file:setup_wsj_only.model_dir)
+        arg(file:setup_wsj_only.train_all_mrg)
+        arg(file:setup_wsj_only.tune_all_mrg)
     }
 }
+
 
 allprojects {
     task show << { t -> logger.warn "warning! ${project.absoluteProjectPath(t.name)}" }

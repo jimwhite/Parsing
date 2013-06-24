@@ -1,2 +1,3 @@
 // include 'parsing'
 include 'corpora', 'corpora:anydomain', 'corpora:anydomain:WSJ'
+include 'wsj_only'
