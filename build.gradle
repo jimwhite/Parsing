@@ -1,15 +1,37 @@
-import org.ifcx.parsing.Experiment
+import org.ifcx.parsing.SetUpParser
+
 
 apply plugin: 'base'
 
 apply from: 'converters.gradle'
 
-task setup_wsj_only (type:Experiment) {
+
+task setup_wsj_only (type:SetUpParser) {
     dependsOn 'corpora:anydomain:WSJ:train_MRG'
     dependsOn 'corpora:anydomain:WSJ:tune_MRG'
-    dependsOn 'corpora:anydomain:WSJ:test_MRG'
+//    dependsOn 'corpora:anydomain:WSJ:test_MRG'
 
     base_parser_dir = file('bllip-parser')
     corpus_name = 'corpora:anydomain:WSJ'
-    experiment_dir = file('wsj_only')
+    parser_dir = file('wsj_only')
+}
+
+task train_wsj_only {
+    dependsOn setup_wsj_only
+
+    doLast {
+        def exec = task train_wsj_only_exec (type:Exec) {
+            // first-stage/TRAIN/allScript first-stage/DATA/EN tmp/train-all.mrg tmp/dev-all.mrg
+            executable 'first-stage/TRAIN/allScript'
+            setArgs('first-stage/DATA/EN', setup_wsj_only.train_MRG, setup_wsj_only.tune_MRG)
+        }
+    }
+}
+
+allprojects {
+    task show << { t -> logger.warn "warning! ${project.absoluteProjectPath(t.name)}" }
+}
+
+task list_projects << {
+    allprojects.each { println it }
 }

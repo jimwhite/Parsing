@@ -1,0 +1,8 @@
+
+initscript {
+    // Is this something that should be handled with TopLevelBuildServiceRegistry.createSettingsProcessor?
+    gradle.settingsEvaluated { settings ->
+//        settings.include 'tmp'
+        new File('tmp').eachDirRecurse { settings.include it.path.replace('/', ':') }
+    }
+}
