@@ -7,7 +7,7 @@ apply plugin: 'base'
 apply from: 'converters.gradle'
 
 project('wsj_only') {
-    def parser = new Parser(_project:project, _corpus_name:':corpora:anydomain:WSJ', _base_parser_dir: file('../bllip-parser'))
+    def parser = new Parser(project:project, corpus_name:':corpora:anydomain:WSJ', base_parser_dir: file('../bllip-parser'))
     parser.createTasks()
 }
 

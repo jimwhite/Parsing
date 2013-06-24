@@ -2,7 +2,6 @@ package org.ifcx.parsing
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
-import org.gradle.api.Task
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputDirectory
 import org.gradle.api.tasks.InputFile
@@ -12,40 +11,28 @@ import org.gradle.api.tasks.TaskAction
 
 class Parser
 {
-    Project _project
+    Project project
 
-    String _corpus_name
+    String corpus_name
 
-    File _base_parser_dir
+    File base_parser_dir
 
-    File _parser_dir
+    File parser_dir
 
-    File _model_dir
+    File model_dir
+
+    def setUpTask
+
+    def trainTask
 
     def createTasks()
     {
-        _parser_dir = new File(_project.projectDir, _project.name)
-        _model_dir = new File(_parser_dir, 'first-stage/DATA/EN')
+        parser_dir = new File(project.projectDir, project.name)
+        model_dir = new File(parser_dir, 'first-stage/DATA/EN')
 
-        def setUpTask = _project.task(type:SetUpParser, "setUp").configure {
-            base_parser_dir = _base_parser_dir
-            corpus_name = _corpus_name
+        setUpTask = project.task(type:SetUpTask, "setUp").configure(SetUpTask.configure(this))
 
-            parser_dir = _parser_dir
-
-            train_all_mrg = new File(_parser_dir, 'tmp/train-all.mrg')
-            tune_all_mrg = new File(_parser_dir, 'tmp/tune-all.mrg')
-        }
-        setUpTask.dependsOn _corpus_name + ':train_MRG'
-        setUpTask.dependsOn _corpus_name + ':tune_MRG'
-
-        def trainTask = _project.task(type:TrainTask, "train") {
-            train_all_mrg = setUpTask.train_all_mrg
-            tune_all_mrg = setUpTask.tune_all_mrg
-        }
-        trainTask.parser_dir = _parser_dir
-        trainTask.model_dir = _model_dir
-        trainTask.dependsOn setUpTask
+        trainTask = project.task(type:TrainTask, "train").configure(TrainTask.configure(this))
     }
 
     static class TrainTask extends DefaultTask
@@ -62,6 +49,18 @@ class Parser
         @OutputDirectory
         File model_dir
 
+        static Closure configure(Parser parser)
+        {
+            return {
+                dependsOn parser.setUpTask
+
+                parser_dir = parser.parser_dir
+                model_dir = parser.model_dir
+                train_all_mrg = parser.setUpTask.train_all_mrg
+                tune_all_mrg = parser.setUpTask.tune_all_mrg
+            }
+        }
+
         @TaskAction
         void train()
         {
@@ -73,7 +72,7 @@ class Parser
         }
     }
 
-    class SetUpTask extends DefaultTask
+    static class SetUpTask extends DefaultTask
     {
         @InputDirectory
         File base_parser_dir
@@ -92,6 +91,21 @@ class Parser
 
         @OutputFile
         File tune_all_mrg
+
+        static Closure configure(Parser parser)
+        {
+            return {
+                corpus_name = parser.corpus_name
+                base_parser_dir = parser.base_parser_dir
+                parser_dir = parser.parser_dir
+
+                dependsOn corpus_name + ':train_MRG'
+                dependsOn corpus_name + ':tune_MRG'
+
+                train_all_mrg = new File(parser_dir, 'tmp/train-all.mrg')
+                tune_all_mrg = new File(parser_dir, 'tmp/tune-all.mrg')
+            }
+        }
 
         @TaskAction
         void setUp()
@@ -147,6 +161,4 @@ class Parser
             }
         }
     }
-
-
 }
