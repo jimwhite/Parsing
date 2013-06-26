@@ -1,79 +1,80 @@
+import org.ifcx.parsing.ConvertManyPTB
 import org.ifcx.parsing.ConvertPTB
 
-task convert_one(type:ConvertPTB) {
+task convert_one(type:ConvertManyPTB) {
     source = file('corpora/anydomain/WSJ/03.mrg')
-    outputFile = file('tmp/03.sent')
+    output_dir = file('tmp')
     mode = '-c'
 }
 
-task convert_many_to_evalb {
-    ext.mode = '-e'
-    ext.source = fileTree('corpora/anydomain/WSJ').include('*.mrg')
-    ext.outputDir = file('tmp/gevalb')
+//task convert_many_to_evalb {
+//    ext.mode = '-e'
+//    ext.source = fileTree('corpora/anydomain/WSJ').include('*.mrg')
+//    ext.outputDir = file('tmp/gevalb')
+//
+//    inputs.file source
+//    outputs.dir outputDir
+//
+//    dependsOn task("create_evalb_outputDir") {
+//        doFirst {
+//            if (outputDir && !outputDir.exists()) {
+//                if (!outputDir.mkdirs()) { println "Couldn't make output directory $outputDir"}
+//            }
+//
+//        }
+//    }
+//
+//    source.each { File file ->
+//        dependsOn task("convert_one${convert_many_to_evalb.mode}_exec-${file}.evalb", type:ConvertPTB, dependsOn: "create_evalb_outputDir") {
+//            mode = convert_many_to_evalb.mode
+//            source file
+//            outputFile = new File(outputDir, file.name + ".evalb")
+//        }
+//    }
+//}
+//
+//task convert_many_to_sent {
+//    ext.mode = '-c'
+//    ext.source = fileTree('corpora/anydomain/WSJ').include('*.mrg')
+//    ext.outputDir = file('tmp/gsent')
+//
+//    inputs.file source
+//    outputs.dir outputDir
+//
+//    doFirst {
+//        if (outputDir && !outputDir.exists()) {
+//            if (!outputDir.mkdirs()) { println "Couldn't make output directory $outputDir"}
+//        }
+//    }
+//
+//    source.each { File from_file ->
+//        def to_file = new File(outputDir, from_file.name + ".sent.txt")
+//        def ptb_task = task("convert_one_mode_${convert_many_to_sent.mode}_${to_file}", type: ConvertPTB) {
+//            mode = convert_many_to_sent.mode
+//            source from_file
+//            outputFile = to_file
+//        }
+//        doLast {
+//            ptb_task.execute()
+//        }
+//
+//        outputs.files(ptb_task.outputs.files)
+//    }
+//}
+//
+//task delete_many_sent << {
+//    println "howdy"
+//    convert_many_to_sent.outputs.files.each { println "removing $it}" ; it.delete() }
+//}
+//
 
-    inputs.file source
-    outputs.dir outputDir
-
-    dependsOn task("create_evalb_outputDir") {
-        doFirst {
-            if (outputDir && !outputDir.exists()) {
-                if (!outputDir.mkdirs()) { println "Couldn't make output directory $outputDir"}
-            }
-
-        }
-    }
-
-    source.each { File file ->
-        dependsOn task("convert_one${convert_many_to_evalb.mode}_exec-${file}.evalb", type:ConvertPTB, dependsOn: "create_evalb_outputDir") {
-            mode = convert_many_to_evalb.mode
-            source file
-            outputFile = new File(outputDir, file.name + ".evalb")
-        }
-    }
-}
-
-task convert_many_to_sent {
-    ext.mode = '-c'
-    ext.source = fileTree('corpora/anydomain/WSJ').include('*.mrg')
-    ext.outputDir = file('tmp/gsent')
-
-    inputs.file source
-    outputs.dir outputDir
-
-    doFirst {
-        if (outputDir && !outputDir.exists()) {
-            if (!outputDir.mkdirs()) { println "Couldn't make output directory $outputDir"}
-        }
-    }
-
-    source.each { File from_file ->
-        def to_file = new File(outputDir, from_file.name + ".sent.txt")
-        def ptb_task = task("convert_one_mode_${convert_many_to_sent.mode}_${to_file}", type: ConvertPTB) {
-            mode = convert_many_to_sent.mode
-            source from_file
-            outputFile = to_file
-        }
-        doLast {
-            ptb_task.execute()
-        }
-
-        outputs.files(ptb_task.outputs.files)
-    }
-}
-
-task delete_many_sent << {
-    println "howdy"
-    convert_many_to_sent.outputs.files.each { println "removing $it}" ; it.delete() }
-}
-
-
-task converter_user(dependsOn:convert_many_to_sent) {
-    outputs.files(convert_many_to_sent.outputs.files)
-//    convert_many_to_sent.outputs.files.each { println it }
-}
-
-task converter_evalb_user(dependsOn:convert_many_to_evalb) << {
-    println "evalb outputs"
-    outputs.files(convert_many_to_evalb.outputs.files)
-    convert_many_to_evalb.outputs.files.each { println it }
-}
+//task converter_user(dependsOn:convert_many_to_sent) {
+//    outputs.files(convert_many_to_sent.outputs.files)
+////    convert_many_to_sent.outputs.files.each { println it }
+//}
+//
+//task converter_evalb_user(dependsOn:convert_many_to_evalb) << {
+//    println "evalb outputs"
+//    outputs.files(convert_many_to_evalb.outputs.files)
+//    convert_many_to_evalb.outputs.files.each { println it }
+//}

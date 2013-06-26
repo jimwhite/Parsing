@@ -2,6 +2,7 @@ package org.ifcx.parsing
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
+import org.gradle.api.Task
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputDirectory
 import org.gradle.api.tasks.InputFile
@@ -21,18 +22,21 @@ class CharniakParser
 
     File model_dir
 
+    Integer number_of_parses = 50
+
     def setUpTask
 
     def trainTask
 
     def createTasks()
     {
-        parser_dir = new File(project.projectDir, project.name)
+        parser_dir = project.projectDir // new File(project.projectDir, project.name)
+
         model_dir = new File(parser_dir, 'first-stage/DATA/EN')
 
-        setUpTask = project.task(type:SetUpTask, "setUp").configure(SetUpTask.configure(this))
+        setUpTask = project.task(type:SetUpTask, "setUp").configure(SetUpTask.configurer(this))
 
-        trainTask = project.task(type:TrainTask, "train").configure(TrainTask.configure(this))
+        trainTask = project.task(type:TrainTask, "train").configure(TrainTask.configurer(this))
     }
 
     static class TrainTask extends DefaultTask
@@ -49,7 +53,7 @@ class CharniakParser
         @OutputDirectory
         File model_dir
 
-        static Closure configure(CharniakParser parser)
+        static Closure configurer(CharniakParser parser)
         {
             return {
                 dependsOn parser.setUpTask
@@ -68,6 +72,78 @@ class CharniakParser
                 arg(file:model_dir)
                 arg(file:train_all_mrg)
                 arg(file:tune_all_mrg)
+            }
+        }
+    }
+
+    static class ParseTask extends DefaultTask
+    {
+        @Input
+        String input_task
+
+//        @Input
+        CharniakParser parser
+
+        @Input
+        File parser_dir
+
+        @Input
+        Integer number_of_parses = 50
+
+        @InputDirectory
+        File model_dir
+
+        @Input
+        File nbest_parses_dir
+
+        ParseTask() {
+            project.afterEvaluate {
+                dependsOn parser.trainTask
+
+                parser_dir = parser.parser_dir
+                model_dir = parser.model_dir
+                number_of_parses = parser.number_of_parses
+
+                doFirst {
+                    ant.mkdir(dir:nbest_parses_dir)
+                }
+
+                Task input_task_task = project.tasks[input_task]
+
+                dependsOn input_task_task
+
+                def parserExecutable = new File(parser_dir, 'first-stage/PARSE/parseIt')
+
+                input_task_task.outputs.files.each { sent_file ->
+                    def output_file = new File(nbest_parses_dir, sent_file.name + '.nbest')
+
+                    // Must send stderr somewhere since redirecting stdout without a redirect
+                    // for stderr will merge them into the output file.
+                    def error_file = new File(nbest_parses_dir, sent_file.name + '.err')
+
+                    outputs.files(output_file)
+
+                    doLast {
+                        ant.exec(executable: parserExecutable, dir:parser_dir, failonerror:true
+                                , output: output_file, error: error_file) {
+                            arg(value:'-K')     // Input is tokenized
+                            arg(value:"-N$number_of_parses")
+                            arg(value:model_dir.path + '/')
+                            arg(file:sent_file)
+                        }
+                    }
+                }
+            }
+        }
+
+        static Closure configure(CharniakParser parser)
+        {
+            return {
+                dependsOn parser.trainTask
+
+                parser_dir = parser.parser_dir
+                model_dir = parser.model_dir
+                number_of_parses = parser.number_of_parses
             }
         }
     }
@@ -92,7 +168,7 @@ class CharniakParser
         @OutputFile
         File tune_all_mrg
 
-        static Closure configure(CharniakParser parser)
+        static Closure configurer(CharniakParser parser)
         {
             return {
                 corpus_name = parser.corpus_name
@@ -119,7 +195,7 @@ class CharniakParser
 
                 exec(executable:'cp') {
                     arg(line:'-RLp')
-                    ['first-stage', 'second-stage', 'evalb', 'Makefile', 'train_all.sh', 'train_all.condor'].each {
+                    ['first-stage'/*, 'second-stage', 'evalb', 'Makefile', 'train_all.sh', 'train_all.condor'*/].each {
                         arg(file:new File(base_parser_dir, it))
                     }
                     arg(file:parser_dir)

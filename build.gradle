@@ -1,14 +1,49 @@
-import org.ifcx.parsing.Parser
+import org.ifcx.parsing.CharniakParser
+import org.ifcx.parsing.ConvertManyPTB
 import org.ifcx.parsing.SetUpParser
 
+//evaluationDependsOnChildren()
+
+evaluationDependsOn(':corpora')
+evaluationDependsOn(':corpora:anydomain')
+evaluationDependsOn(':corpora:anydomain:WSJ')
+
+println project
+println project(':corpora:anydomain:WSJ')
+println project(':corpora:anydomain:WSJ').tasks
 
 apply plugin: 'base'
 
 apply from: 'converters.gradle'
 
 project('wsj_only') {
-    def parser = new Parser(project:project, corpus_name:':corpora:anydomain:WSJ', base_parser_dir: file('../bllip-parser'))
-    parser.createTasks()
+    def _bllip_parser_dir = file('../bllip-parser')
+    def _parser = new CharniakParser(project:project, corpus_name:':corpora:anydomain:WSJ', base_parser_dir: _bllip_parser_dir)
+    _parser.createTasks()
+
+    task convert_test_to_evalb(type:ConvertManyPTB, dependsOn:':corpora:anydomain:WSJ:test_MRG') {
+//        dependsOn ':corpora:anydomain:WSJ:test_MRG'
+//        bllip_parser_dir = _bllip_parser_dir
+        println project
+        println project(':corpora:anydomain:WSJ')
+        source = project(':corpora:anydomain:WSJ').tasks.test_MRG.outputs.files
+        output_dir = file('tmp/test_evalb_data')
+        mode = '-e'
+    }
+
+    task convert_test_to_sent(type:ConvertManyPTB) {
+        dependsOn ':corpora:anydomain:WSJ:test_MRG'
+//        bllip_parser_dir = _bllip_parser_dir
+        source = project(':corpora:anydomain:WSJ').tasks.test_MRG.outputs.files
+        output_dir = file('tmp/test_sentences')
+        mode = '-c'
+    }
+
+    task parse_test(type:CharniakParser.ParseTask) {
+        parser = _parser
+        input_task = 'convert_test_to_sent'
+        nbest_parses_dir = file('tmp/test_parsed')
+    }
 }
 
 task setup_wsj_only (type:SetUpParser) {
