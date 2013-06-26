@@ -119,7 +119,7 @@ class CharniakParser
 
                     // Must send stderr somewhere since redirecting stdout without a redirect
                     // for stderr will merge them into the output file.
-                    def error_file = new File(nbest_parses_dir, sent_file.name + '.err')
+                    def error_file = new File(nbest_parses_dir, output_file.name + '.err')
 
                     outputs.files(output_file)
 
@@ -127,6 +127,7 @@ class CharniakParser
                         ant.exec(executable: parserExecutable, dir:parser_dir, failonerror:true
                                 , output: output_file, error: error_file) {
                             arg(value:'-K')     // Input is tokenized
+                            arg(value:'-l400')  // Accept very long sentences.
                             arg(value:"-N$number_of_parses")
                             arg(value:model_dir.path + '/')
                             arg(file:sent_file)
@@ -136,7 +137,7 @@ class CharniakParser
             }
         }
 
-        static Closure configure(CharniakParser parser)
+        static Closure configurer(CharniakParser parser)
         {
             return {
                 dependsOn parser.trainTask
@@ -147,6 +148,132 @@ class CharniakParser
             }
         }
     }
+
+    static class SelectParseTask extends DefaultTask
+    {
+        @Input
+        String input_task
+
+        @Input
+        File best_parse_dir
+
+        SelectParseTask() {
+            project.afterEvaluate {
+                Task input_task_task = project.tasks[input_task]
+
+                dependsOn input_task_task
+
+                doFirst {
+                    ant.mkdir(dir:best_parse_dir)
+                }
+
+                input_task_task.outputs.files.each { nbest_file ->
+                    def output_file = new File(best_parse_dir, (nbest_file.name - ~/\.sent\.nbest$/) + '.best')
+
+                    inputs.files(nbest_file)
+                    outputs.files(output_file)
+
+                    doLast {
+                        output_file.withPrintWriter { best_writer ->
+                        nbest_file.withReader { nbest_reader ->
+                            def line = nbest_reader.readLine()
+                            while (line) {
+                                def (_, parse_count, sentence_id) = (line =~ /(\d+)[^.]+\.(.+)/)[0]
+                                parse_count = parse_count as Integer
+
+                                parse_count.times { i ->
+                                    def log_p_parse = nbest_reader.readLine() as Double
+                                    def parse = nbest_reader.readLine()
+
+                                    // Output the most likely parse.
+                                    if (i == 0) {
+                                        best_writer.println parse
+                                    }
+                                }
+
+                                // Should be a blank separator line.
+                                line = nbest_reader.readLine()
+                                assert !line.trim()
+
+                                // The next parse header (or the end)
+                                line = nbest_reader.readLine()
+                            }
+                        }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    static class EvalBTask extends DefaultTask
+    {
+        @Input
+        String gold_task_name
+
+        @Input
+        String input_task_name
+
+//        @Input
+        CharniakParser parser
+
+        @InputDirectory
+        File evalb_program_dir
+
+        @Input
+        File evalb_output_dir
+
+        EvalBTask() {
+            project.afterEvaluate {
+                Task input_task = project.tasks[input_task_name]
+
+                dependsOn input_task
+
+                Task gold_task = project.tasks[gold_task_name]
+
+                dependsOn gold_task
+
+                Map<String, File> gold_parse_files = gold_task.outputs.files.files.collectEntries { [it.name, it] }
+
+                evalb_program_dir = new File(parser.base_parser_dir, 'evalb')
+
+                def evalb_prm_file = new File(evalb_program_dir, 'new.prm')
+
+                inputs.files(evalb_prm_file)
+
+                doFirst {
+                    ant.mkdir(dir:evalb_output_dir)
+                }
+
+                def evalb_executable = new File(evalb_program_dir, 'evalb')
+
+                input_task.outputs.files.each { best_parse_file ->
+                    def base_name = best_parse_file.name - ~/\.best$/
+                    def gold_parse_file = gold_parse_files[base_name + '.gold']
+                    def output_file = new File(evalb_output_dir, base_name + '.evalb')
+
+                    // Must send stderr somewhere since redirecting stdout without a redirect
+                    // for stderr will merge them into the output file.
+                    def error_file = new File(evalb_output_dir, output_file.name + '.err')
+
+                    inputs.files(best_parse_file)
+                    /*if (gold_parse_file != null)*/ inputs.files(gold_parse_file)
+                    outputs.files(output_file)
+
+                    doLast {
+                        ant.exec(executable: evalb_executable, dir:evalb_output_dir, failonerror:true
+                                , output: output_file, error: error_file) {
+                            arg(value:'-p')     // Input is tokenized
+                            arg(file:evalb_prm_file)
+                            arg(file:gold_parse_file)
+                            arg(file:best_parse_file)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
 
     static class SetUpTask extends DefaultTask
     {

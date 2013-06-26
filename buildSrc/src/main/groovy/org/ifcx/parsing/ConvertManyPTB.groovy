@@ -23,9 +23,16 @@ class ConvertManyPTB extends SourceTask {
                 ant.mkdir(dir:output_dir)
             }
 
+            def file_ext = ''
+
+            switch (mode) {
+                case '-e' : file_ext = '.gold' ; break
+                case '-c' : file_ext = '.sent' ; break
+            }
+
             source.each { ptb_file ->
-                def output_file = new File(output_dir, ptb_file.name + '.sent')
-                def error_file = new File(output_dir, ptb_file.name + '.err')
+                def output_file = new File(output_dir, ptb_file.name + file_ext)
+                def error_file = new File(output_dir, output_file.name + '.err')
 
                 outputs.files(output_file)
 

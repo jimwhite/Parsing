@@ -8,15 +8,16 @@ evaluationDependsOn(':corpora')
 evaluationDependsOn(':corpora:anydomain')
 evaluationDependsOn(':corpora:anydomain:WSJ')
 
-println project
-println project(':corpora:anydomain:WSJ')
-println project(':corpora:anydomain:WSJ').tasks
+//println project
+//println project(':corpora:anydomain:WSJ')
+//println project(':corpora:anydomain:WSJ').tasks
 
 apply plugin: 'base'
 
 apply from: 'converters.gradle'
 
 project('wsj_only') {
+    mkdir(project.projectDir)
     def _bllip_parser_dir = file('../bllip-parser')
     def _parser = new CharniakParser(project:project, corpus_name:':corpora:anydomain:WSJ', base_parser_dir: _bllip_parser_dir)
     _parser.createTasks()
@@ -24,25 +25,39 @@ project('wsj_only') {
     task convert_test_to_evalb(type:ConvertManyPTB, dependsOn:':corpora:anydomain:WSJ:test_MRG') {
 //        dependsOn ':corpora:anydomain:WSJ:test_MRG'
 //        bllip_parser_dir = _bllip_parser_dir
-        println project
-        println project(':corpora:anydomain:WSJ')
-        source = project(':corpora:anydomain:WSJ').tasks.test_MRG.outputs.files
-        output_dir = file('tmp/test_evalb_data')
+        def input_task = project(':corpora:anydomain:WSJ').tasks.test_MRG
+        dependsOn input_task
+        source = input_task.outputs.files
+        output_dir = file('test_evalb_gold')
         mode = '-e'
     }
 
     task convert_test_to_sent(type:ConvertManyPTB) {
-        dependsOn ':corpora:anydomain:WSJ:test_MRG'
+//        dependsOn ':corpora:anydomain:WSJ:test_MRG'
 //        bllip_parser_dir = _bllip_parser_dir
-        source = project(':corpora:anydomain:WSJ').tasks.test_MRG.outputs.files
-        output_dir = file('tmp/test_sentences')
+        def input_task = project(':corpora:anydomain:WSJ').tasks.test_MRG
+        dependsOn input_task
+        source = input_task.outputs.files
+        output_dir = file('test_sentences')
         mode = '-c'
     }
 
     task parse_test(type:CharniakParser.ParseTask) {
         parser = _parser
         input_task = 'convert_test_to_sent'
-        nbest_parses_dir = file('tmp/test_parsed')
+        nbest_parses_dir = file('test_parsed')
+    }
+
+    task select_best_test_parse(type:CharniakParser.SelectParseTask) {
+        input_task = 'parse_test'
+        best_parse_dir = file('test_parsed')
+    }
+
+    task evalb_parse_test(type:CharniakParser.EvalBTask) {
+        parser = _parser
+        gold_task_name = 'convert_test_to_evalb'
+        input_task_name = 'select_best_test_parse'
+        evalb_output_dir = file('test_parsed')
     }
 }
 
