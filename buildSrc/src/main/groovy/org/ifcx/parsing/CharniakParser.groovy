@@ -9,7 +9,7 @@ import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
 
-class Parser
+class CharniakParser
 {
     Project project
 
@@ -49,7 +49,7 @@ class Parser
         @OutputDirectory
         File model_dir
 
-        static Closure configure(Parser parser)
+        static Closure configure(CharniakParser parser)
         {
             return {
                 dependsOn parser.setUpTask
@@ -92,7 +92,7 @@ class Parser
         @OutputFile
         File tune_all_mrg
 
-        static Closure configure(Parser parser)
+        static Closure configure(CharniakParser parser)
         {
             return {
                 corpus_name = parser.corpus_name
