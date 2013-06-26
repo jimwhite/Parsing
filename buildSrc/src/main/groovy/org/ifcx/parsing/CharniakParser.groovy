@@ -176,8 +176,8 @@ class CharniakParser
                     doLast {
                         output_file.withPrintWriter { best_writer ->
                         nbest_file.withReader { nbest_reader ->
-                            def line = nbest_reader.readLine()
-                            while (line) {
+                            String line
+                            while (line = nbest_reader.readLine()) {
                                 def (_, parse_count, sentence_id) = (line =~ /(\d+)[^.]+\.(.+)/)[0]
                                 parse_count = parse_count as Integer
 
@@ -185,7 +185,7 @@ class CharniakParser
                                     def log_p_parse = nbest_reader.readLine() as Double
                                     def parse = nbest_reader.readLine()
 
-                                    // Output the most likely parse.
+                                    // Output the first (which is the most likely) parse.
                                     if (i == 0) {
                                         best_writer.println parse
                                     }
@@ -194,9 +194,6 @@ class CharniakParser
                                 // Should be a blank separator line.
                                 line = nbest_reader.readLine()
                                 assert !line.trim()
-
-                                // The next parse header (or the end)
-                                line = nbest_reader.readLine()
                             }
                         }
                         }
