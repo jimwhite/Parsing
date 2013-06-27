@@ -13,7 +13,7 @@ class EnsembleParser
 
     String split_method
 
-    // The list of parsers is kept in sorted order so that the corpus splits will match up.
+    // The list of parsers is kept in sorted order so that the corpus splits will match up repeatably.
     List<Project> parsers
 
     def setUpTask
@@ -37,51 +37,55 @@ class EnsembleParser
     }
 
     protected void create_parser_tasks(Project parser_project) {
-        parser_project.project('corpus')  { corpus_project ->
-            corpus_project.task('split_MRG').configure {
-                dependsOn setUpTask
+        parser_project.project('corpus').task('split_MRG').configure {
+            dependsOn setUpTask
 
-                doFirst {
-                    mkdir project.projectDir
-                }
+            doFirst {
+                project.mkdir project.projectDir
+            }
 
-                def splits_dir = new File(ensemble_project.projectDir, 'splits')
-                def our_split_file = new File(splits_dir, parser_project.name + '.mrg')
+            def splits_dir = new File(ensemble_project.projectDir, 'splits')
+            def our_split_file = new File(splits_dir, parser_project.name + '.mrg')
 
-                inputs.files(our_split_file)
+            inputs.files(our_split_file)
 
-                doLast {
-                    new File(project.projectDir, 'train.mrg').withPrintWriter { train_writer ->
-                    new File(project.projectDir, 'tune.mrg').withPrintWriter { tune_writer ->
-                        int lineNumber = 0
-                        our_split_file.eachLine { line ->
-                            if (++lineNumber % 10 == 0) {
-                                tune_writer.println line
-                            } else {
-                                train_writer.println line
-                            }
+            def train_file = new File(project.projectDir, 'train.mrg')
+            def tune_file = new File(project.projectDir, 'tune.mrg')
+
+            outputs.files(train_file, tune_file)
+
+            doLast {
+                train_file.withPrintWriter { train_writer ->
+                tune_file.withPrintWriter { tune_writer ->
+                    int lineNumber = 0
+                    our_split_file.eachLine { line ->
+                        if (++lineNumber % 10 == 0) {
+                            tune_writer.println line
+                        } else {
+                            train_writer.println line
                         }
                     }
-                    }
                 }
-            }
-
-            corpus_project.task('train_MRG').configure {
-                dependsOn 'split_MRG'
-                outputs.file('train.mrg')
-            }
-
-            corpus_project.task('tune_MRG').configure {
-                dependsOn 'split_MRG'
-                outputs.file('tune.mrg')
+                }
             }
         }
 
-        def parser = new CharniakParser()
-        parser.project = parser_project
-        parser.base_parser_dir = new File(ensemble_project.parent.projectDir, 'bllip-parser')
-        parser.corpus_name = 'corpus'
-        parser.createTasks()
+        parser_project.project('corpus').task('train_MRG').configure {
+            dependsOn 'split_MRG'
+            outputs.file('train.mrg')
+        }
+
+        parser_project.project('corpus').task('tune_MRG').configure {
+            dependsOn 'split_MRG'
+            outputs.file('tune.mrg')
+        }
+
+        new CharniakParser().with {
+            project = parser_project
+            base_parser_dir = new File(ensemble_project.parent.projectDir, 'bllip-parser')
+            corpus_name = 'corpus'
+            createTasks()
+        }
     }
 
     static class SetUpTask extends DefaultTask
