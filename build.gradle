@@ -63,20 +63,22 @@ project('wsj_only') {
 }
 
 project('ensemble_wsj_uni') {
-    mkdir(project.projectDir)
-//    def _bllip_parser_dir = file('../bllip-parser')
-    def ensemble = new EnsembleParser()
+    def _ensemble = new EnsembleParser(ensemble_project: project, corpus_name:':corpora:anydomain:WSJ', split_method: 'uni')
+    _ensemble.createTasks()
 
-    task set_up(type:EnsembleParser.SetUpTask) {
-        corpus_name = ':corpora:anydomain:WSJ'
-        split_method = 'uni'
-        base_parser_name = CharniakParser.name
-    }
+//    task set_up(type:EnsembleParser.SetUpTask) {
+//        corpus_name = ':corpora:anydomain:WSJ'
+//        split_method = 'uni'
+//    }
 
     task clean_setup << {
         ant.delete {
             set_up.outputs.files.addToAntBuilder(ant, 'resources')
         }
+    }
+
+    task list_parsers {
+        project.childProjects.sort { it.key }.each { println it }
     }
 }
 
@@ -116,7 +118,8 @@ task train_wsj_only(dependsOn:setup_wsj_only) << {
 
 
 allprojects {
-    task show << { t -> logger.warn "warning! ${project.absoluteProjectPath(t.name)}" }
+//     println project
+    task show << { t -> logger.warn "project ${project.absoluteProjectPath(t.name)}" }
 }
 
 task list_projects << {

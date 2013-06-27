@@ -2,3 +2,6 @@
 include 'corpora', 'corpora:anydomain', 'corpora:anydomain:WSJ'
 include 'wsj_only'
 include 'ensemble_wsj_uni'
+
+20.times { i -> include "ensemble_wsj_uni:parser_${String.sprintf('%02d', i)}:corpus" }
+

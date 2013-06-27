@@ -18,15 +18,15 @@ class CharniakParser
 
     File base_parser_dir
 
-    File parser_dir
-
-    File model_dir
-
     Integer number_of_parses = 50
 
     def setUpTask
 
     def trainTask
+
+    private File parser_dir
+
+    private File model_dir
 
     def createTasks()
     {
@@ -34,7 +34,7 @@ class CharniakParser
 
         model_dir = new File(parser_dir, 'first-stage/DATA/EN')
 
-        setUpTask = project.task(type:SetUpTask, "setUp").configure(SetUpTask.configurer(this))
+        setUpTask = project.task(type:SetUpTask, "set_up").configure(SetUpTask.configurer(this))
 
         trainTask = project.task(type:TrainTask, "train").configure(TrainTask.configurer(this))
     }
