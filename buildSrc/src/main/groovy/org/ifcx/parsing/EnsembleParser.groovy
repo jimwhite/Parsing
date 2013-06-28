@@ -14,10 +14,12 @@ class EnsembleParser
 
     String split_method
 
+    Integer split_percentage = 40
+
     File bllip_parser_dir
 
-
     // The list of parsers is kept in sorted order (by project name) so that the corpus splits will match up repeatably.
+    List<Project> parser_projects
     List<CharniakParser> parsers
 
     Task setUpTask
@@ -42,7 +44,8 @@ class EnsembleParser
             owner.setUpTask = task(type:SetUpTask, "set_up").configure(SetUpTask.configurer(this))
 
             // Create the parsers after the ensemble set_up task since they depend on it.
-            owner.parsers = childProjects.keySet().grep { it.startsWith 'parser_' }.sort().collect { create_parser childProjects[it] }
+            owner.parser_projects = childProjects.keySet().grep { it.startsWith 'parser_' }.sort().collect { childProjects[it] }
+            owner.parsers = parser_projects.collect { create_parser it }
 
             // Ensemble training is just making sure the training task for each of the child parsers has been done.
             owner.trainTask = project.task("train").configure {
@@ -106,28 +109,42 @@ class EnsembleParser
                 project.mkdir project.projectDir
             }
 
-            def splits_dir = new File(ensemble_project.projectDir, 'splits')
-            def our_split_file = new File(splits_dir, parser_project.name + '.mrg')
+            project.afterEvaluate {
+                def parser_i = parser_projects.indexOf(parser_project)
 
-            inputs.files(our_split_file)
+                assert parser_i >= 0
 
-            def train_file = new File(project.projectDir, 'train.mrg')
-            def tune_file = new File(project.projectDir, 'tune.mrg')
+                // Choose split_percentage of the available splits in a range that is centered over this parser's index.
+                List files = setUpTask.outputs.files as List
+                def split_N = files.size()
+                int split_span = (((split_N * split_percentage) / 100) - 1) / 2
+                def our_splits = ((parser_i + split_N) - split_span) .. ((parser_i + split_N) + split_span)
+                // Groovy lets us get a list of things from a list by supplying a list of indicies.
+                // To make wrap-around of the indicies convenient we use a tripled (repeated) list of the split files.
+                List<File> our_split_files = (files * 3)[our_splits]
 
-            outputs.files(train_file, tune_file)
+                inputs.files(*our_split_files)
 
-            doLast {
-                train_file.withPrintWriter { train_writer ->
-                tune_file.withPrintWriter { tune_writer ->
-                    int lineNumber = 0
-                    our_split_file.eachLine { line ->
-                        if (++lineNumber % 10 == 0) {
-                            tune_writer.println line
-                        } else {
-                            train_writer.println line
+                def train_file = new File(project.projectDir, 'train.mrg')
+                def tune_file = new File(project.projectDir, 'tune.mrg')
+
+                outputs.files(train_file, tune_file)
+
+                doLast {
+                    train_file.withPrintWriter { train_writer ->
+                        tune_file.withPrintWriter { tune_writer ->
+                            int lineNumber = 0
+                            our_split_files.each {
+                                it.eachLine { line ->
+                                    if (++lineNumber % 10 == 0) {
+                                        tune_writer.println line
+                                    } else {
+                                        train_writer.println line
+                                    }
+                                }
+                            }
                         }
                     }
-                }
                 }
             }
         }
@@ -229,7 +246,7 @@ class EnsembleParser
                     ant.mkdir(dir:splits_dir)
                 }
 
-                List<File> split_files = ensemble.parsers.collect { new File(splits_dir, it.project.name + '.mrg') }
+                List<File> split_files = (0..<split_K).collect { i -> new File(splits_dir, "split_${i}.mrg") }
 
                 outputs.files(*split_files)
 

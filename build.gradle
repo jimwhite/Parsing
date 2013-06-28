@@ -32,7 +32,7 @@ project('ensemble_wsj_uni') {
         corpus_name = ':corpora:anydomain:WSJ'
         split_method =  'uni'
         createTasks()
-        createTasksForCorpus('test', project.project(':corpora:anydomain:WSJ').tasks.test_MRG)
+        createTasksForCorpus('wsj_test', project.project(':corpora:anydomain:WSJ').tasks.test_MRG)
 }
 
     task clean_setup << {
