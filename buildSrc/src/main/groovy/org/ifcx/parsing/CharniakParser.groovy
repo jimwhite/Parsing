@@ -12,7 +12,7 @@ import org.gradle.api.tasks.TaskAction
 
 class CharniakParser
 {
-    Project project
+    final Project project
 
     String corpus_name
 
@@ -28,6 +28,10 @@ class CharniakParser
 
     private File model_dir
 
+    CharniakParser(Project project) {
+        this.project = project
+    }
+
     def createTasks()
     {
         parser_dir = project.projectDir // new File(project.projectDir, project.name)
@@ -37,6 +41,52 @@ class CharniakParser
         setUpTask = project.task(type:SetUpTask, "set_up").configure(SetUpTask.configurer(this))
 
         trainTask = project.task(type:TrainTask, "train").configure(TrainTask.configurer(this))
+
+        [set_up:setUpTask, train:trainTask]
+    }
+
+    def createTasksForCorpus(String base_name, Task source_task)
+    {
+        def _parser = this
+
+//        project.mkdir project.file(base_name)
+
+        def parsed_dir = project.file("$base_name-parsed")
+
+        def convert_to_gold = project.task("$base_name-convert_to_gold", type:ConvertManyPTB).configure {
+            dependsOn source_task
+            source = source_task.outputs.files
+            output_dir = project.file("$base_name-gold")
+            mode = '-e'
+        }
+
+        def convert_to_sent = project.task("$base_name-convert_to_sent", type:ConvertManyPTB).configure {
+            dependsOn source_task
+            source = source_task.outputs.files
+            output_dir = project.file("$base_name-sentences")
+            mode = '-c'
+        }
+
+        def parse = project.task("$base_name-parse", type:ParseTask).configure {
+            parser = _parser
+            input_task_name = convert_to_sent.name
+            nbest_parses_dir = parsed_dir
+        }
+
+        def select_best_parse = project.task("$base_name-select", type:SelectParseTask).configure {
+            input_task_name = parse.name
+            best_parse_dir = parsed_dir
+        }
+
+        def evaluate_parse = project.task("$base_name-evaluate", type:EvalBTask).configure {
+            parser = _parser
+            gold_task_name = convert_to_gold.name
+            input_task_name = select_best_parse.name
+            evalb_output_dir = parsed_dir
+        }
+
+        [convert_to_gold:convert_to_gold, convert_to_sent:convert_to_sent
+            , parse:parse, select:select_best_parse, evaluate:evaluate_parse]
     }
 
     static class TrainTask extends DefaultTask
@@ -79,7 +129,7 @@ class CharniakParser
     static class ParseTask extends DefaultTask
     {
         @Input
-        String input_task
+        String input_task_name
 
 //        @Input
         CharniakParser parser
@@ -88,7 +138,7 @@ class CharniakParser
         File parser_dir
 
         @Input
-        Integer number_of_parses = 50
+        Integer number_of_parses
 
         @InputDirectory
         File model_dir
@@ -108,7 +158,7 @@ class CharniakParser
                     ant.mkdir(dir:nbest_parses_dir)
                 }
 
-                Task input_task_task = project.tasks[input_task]
+                Task input_task_task = project.tasks[input_task_name]
 
                 dependsOn input_task_task
 
@@ -152,14 +202,14 @@ class CharniakParser
     static class SelectParseTask extends DefaultTask
     {
         @Input
-        String input_task
+        String input_task_name
 
         @Input
         File best_parse_dir
 
         SelectParseTask() {
             project.afterEvaluate {
-                Task input_task_task = project.tasks[input_task]
+                Task input_task_task = project.tasks[input_task_name]
 
                 dependsOn input_task_task
 

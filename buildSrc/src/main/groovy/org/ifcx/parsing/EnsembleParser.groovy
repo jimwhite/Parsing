@@ -2,6 +2,7 @@ package org.ifcx.parsing
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
+import org.gradle.api.Task
 import org.gradle.api.file.FileCollection
 import org.gradle.api.tasks.Input
 
@@ -13,10 +14,12 @@ class EnsembleParser
 
     String split_method
 
-    // The list of parsers is kept in sorted order so that the corpus splits will match up repeatably.
-    List<Project> parsers
+    // The list of parsers is kept in sorted order (by project name) so that the corpus splits will match up repeatably.
+    List<CharniakParser> parsers
 
-    def setUpTask
+    Task setUpTask
+
+    Task trainTask
 
     // Number of sentences per batch (which we use rather than articles/documents).
     // This assumes that the source corpus is ordered in a domain and document sensitive way.
@@ -24,19 +27,26 @@ class EnsembleParser
 
     def createTasks()
     {
-        ensemble_project.mkdir(ensemble_project.projectDir)
+        ensemble_project.with {
+            mkdir projectDir
+            // Creating the setUpTask also
 
-        // Creating the setUpTask also
-        setUpTask = ensemble_project.task(type:SetUpTask, "set_up").configure(SetUpTask.configurer(this))
+            // Use closure owner to dodge Gradle's (deprecated) automatic dynamic property creation.
+            owner.setUpTask = task(type:SetUpTask, "set_up").configure(SetUpTask.configurer(this))
 
-//        trainTask = project.task(type:TrainTask, "train").configure(TrainTask.configurer(this))
+            // Create the parsers after the ensemble set_up task since they depend on it.
+            owner.parsers = childProjects.keySet().grep { it.startsWith 'parser_' }.sort().collect { create_parser childProjects[it] }
 
-        def child_projects = ensemble_project.childProjects
-        parsers = child_projects.keySet().grep { it.startsWith 'parser_' }.sort().collect { child_projects[it] }
-        parsers.each { create_parser_tasks it }
+            // Ensemble training is just making sure the training task for each of the child parsers has been done.
+            owner.trainTask = project.task("train").configure {
+                dependsOn(*parsers.trainTask)
+            }
+
+            [set_up:setUpTask, train:trainTask]
+        }
     }
 
-    protected void create_parser_tasks(Project parser_project) {
+    protected CharniakParser create_parser(Project parser_project) {
         parser_project.project('corpus').task('split_MRG').configure {
             dependsOn setUpTask
 
@@ -80,11 +90,11 @@ class EnsembleParser
             outputs.file('tune.mrg')
         }
 
-        new CharniakParser().with {
-            project = parser_project
-            base_parser_dir = new File(ensemble_project.parent.projectDir, 'bllip-parser')
+        new CharniakParser(parser_project).with {
+            base_parser_dir = ensemble_project.rootProject.file('bllip-parser')
             corpus_name = 'corpus'
             createTasks()
+            it
         }
     }
 
@@ -167,7 +177,7 @@ class EnsembleParser
                     ant.mkdir(dir:splits_dir)
                 }
 
-                List<File> split_files = ensemble.parsers.collect { new File(splits_dir, it.name + '.mrg') }
+                List<File> split_files = ensemble.parsers.collect { new File(splits_dir, it.project.name + '.mrg') }
 
                 outputs.files(*split_files)
 
