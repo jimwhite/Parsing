@@ -2,6 +2,7 @@ import org.ifcx.parsing.ConvertManyPTB
 import org.ifcx.parsing.ConvertPTB
 
 task convert_one(type:ConvertManyPTB) {
+    bllip_parser_dir = project.rootProject.file('bllip-parser')
     source = file('corpora/anydomain/WSJ/03.mrg')
     output_dir = file('tmp')
     mode = '-c'

@@ -55,13 +55,17 @@ class CharniakParser
 
         def convert_to_gold = project.task("$base_name-convert_to_gold", type:ConvertManyPTB).configure {
             dependsOn source_task
+            bllip_parser_dir = owner.base_parser_dir
             source = source_task.outputs.files
             output_dir = project.file("$base_name-gold")
             mode = '-e'
+
+            assert bllip_parser_dir
         }
 
         def convert_to_sent = project.task("$base_name-convert_to_sent", type:ConvertManyPTB).configure {
             dependsOn source_task
+            bllip_parser_dir = owner.base_parser_dir
             source = source_task.outputs.files
             output_dir = project.file("$base_name-sentences")
             mode = '-c'
@@ -79,7 +83,7 @@ class CharniakParser
         }
 
         def evaluate_parse = project.task("$base_name-evaluate", type:EvalBTask).configure {
-            parser = _parser
+            evalb_program_dir = new File(owner.base_parser_dir, 'evalb')
             gold_task_name = convert_to_gold.name
             input_task_name = select_best_parse.name
             evalb_output_dir = parsed_dir
@@ -261,9 +265,6 @@ class CharniakParser
         @Input
         String input_task_name
 
-//        @Input
-        CharniakParser parser
-
         @InputDirectory
         File evalb_program_dir
 
@@ -281,8 +282,6 @@ class CharniakParser
                 dependsOn gold_task
 
                 Map<String, File> gold_parse_files = gold_task.outputs.files.files.collectEntries { [it.name, it] }
-
-                evalb_program_dir = new File(parser.base_parser_dir, 'evalb')
 
                 def evalb_prm_file = new File(evalb_program_dir, 'new.prm')
 

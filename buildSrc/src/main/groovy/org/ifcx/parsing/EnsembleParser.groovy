@@ -8,11 +8,14 @@ import org.gradle.api.tasks.Input
 
 class EnsembleParser
 {
-    Project ensemble_project
+    final Project ensemble_project
 
     String corpus_name
 
     String split_method
+
+    File bllip_parser_dir
+
 
     // The list of parsers is kept in sorted order (by project name) so that the corpus splits will match up repeatably.
     List<CharniakParser> parsers
@@ -24,6 +27,10 @@ class EnsembleParser
     // Number of sentences per batch (which we use rather than articles/documents).
     // This assumes that the source corpus is ordered in a domain and document sensitive way.
     def batch_size = 10
+
+    EnsembleParser(Project p) {
+        ensemble_project = p
+    }
 
     def createTasks()
     {
@@ -39,11 +46,56 @@ class EnsembleParser
 
             // Ensemble training is just making sure the training task for each of the child parsers has been done.
             owner.trainTask = project.task("train").configure {
+                // The Task.dependsOn method accepts var args for the dependencies, so we spread a list into args.
+                // Can't leave the parens out here because then the parser thinks it is multiply instead of spread.
                 dependsOn(*parsers.trainTask)
             }
 
             [set_up:setUpTask, train:trainTask]
         }
+    }
+
+    def createTasksForCorpus(String base_name, Task source_task)
+    {
+        def convert_to_gold = ensemble_project.task("$base_name-convert_to_gold", type:ConvertManyPTB).configure {
+            dependsOn source_task
+            bllip_parser_dir = owner.bllip_parser_dir
+            source = source_task.outputs.files
+            output_dir = project.file("$base_name-gold")
+            mode = '-e'
+
+            assert bllip_parser_dir
+        }
+
+        def convert_to_sent = ensemble_project.task("$base_name-convert_to_sent", type:ConvertManyPTB).configure {
+            dependsOn source_task
+            bllip_parser_dir = owner.bllip_parser_dir
+            source = source_task.outputs.files
+            output_dir = project.file("$base_name-sentences")
+            mode = '-c'
+        }
+
+        def parsers_for_corpus = parsers.collect { it.createTasksForCorpus base_name, source_task }
+
+        def parse = ensemble_project.task("$base_name-parse").configure {
+            dependsOn(*parsers_for_corpus.parse)
+        }
+
+        def select_best_parse = ensemble_project.task("$base_name-select", type:SelectParseTask).configure {
+            input_task_name = parse.name
+            best_parse_dir = project.file("$base_name-parsed")
+        }
+
+        def evaluate_parse = ensemble_project.task("$base_name-evaluate", type:CharniakParser.EvalBTask).configure {
+            evalb_program_dir = new File(owner.bllip_parser_dir, 'evalb')
+            gold_task_name = convert_to_gold.name
+            input_task_name = select_best_parse.name
+            evalb_output_dir = project.file("$base_name-parsed")
+        }
+
+        [convert_to_gold:convert_to_gold, convert_to_sent:convert_to_sent
+                , parsers_for_corpus:parsers_for_corpus
+                , parse:parse, select:select_best_parse, evaluate:evaluate_parse]
     }
 
     protected CharniakParser create_parser(Project parser_project) {
@@ -91,7 +143,7 @@ class EnsembleParser
         }
 
         new CharniakParser(parser_project).with {
-            base_parser_dir = ensemble_project.rootProject.file('bllip-parser')
+            base_parser_dir = owner.bllip_parser_dir
             corpus_name = 'corpus'
             createTasks()
             it
@@ -199,6 +251,37 @@ class EnsembleParser
                     }
 
                     split_writers.each { it.close() }
+                }
+            }
+        }
+    }
+
+    static class SelectParseTask extends DefaultTask
+    {
+        @Input
+        String input_task_name
+
+        @Input
+        File best_parse_dir
+
+        SelectParseTask() {
+            project.afterEvaluate {
+                Task input_task_task = project.tasks[input_task_name]
+
+                dependsOn input_task_task
+
+                doFirst {
+                    ant.mkdir(dir:best_parse_dir)
+                }
+
+                input_task_task.outputs.files.each { nbest_file ->
+                    def output_file = new File(best_parse_dir, (nbest_file.name - ~/\.sent\.nbest$/) + '.best')
+
+                    inputs.files(nbest_file)
+                    outputs.files(output_file)
+
+                    doLast {
+                    }
                 }
             }
         }

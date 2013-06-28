@@ -8,16 +8,15 @@ class ConvertManyPTB extends SourceTask {
     @Input
     String mode
 
-//    @InputDirectory
-//    File bllip_parser_dir
+    @InputDirectory
+    File bllip_parser_dir
 
     @Input
     File output_dir
 
     ConvertManyPTB() {
         project.afterEvaluate {
-//            def ptb_executable = new File(bllip_parser_dir, 'second-stage/programs/prepare-data/ptb')
-            def ptb_executable = new File(project.rootDir, 'bllip-parser/second-stage/programs/prepare-data/ptb')
+            def ptb_executable = new File(bllip_parser_dir, 'second-stage/programs/prepare-data/ptb')
 
             doFirst {
                 ant.mkdir(dir:output_dir)

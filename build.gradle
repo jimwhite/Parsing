@@ -15,7 +15,7 @@ evaluationDependsOn(':corpora:anydomain:WSJ')
 
 apply plugin: 'base'
 
-apply from: 'converters.gradle'
+//apply from: 'converters.gradle'
 
 project('wsj_only') {
     new CharniakParser(it).with {
@@ -27,8 +27,13 @@ project('wsj_only') {
 }
 
 project('ensemble_wsj_uni') {
-    def _ensemble = new EnsembleParser(ensemble_project: project, corpus_name:':corpora:anydomain:WSJ', split_method: 'uni')
-    _ensemble.createTasks()
+    new EnsembleParser(it).with {
+        bllip_parser_dir = ensemble_project.rootProject.file('bllip-parser')
+        corpus_name = ':corpora:anydomain:WSJ'
+        split_method =  'uni'
+        createTasks()
+        createTasksForCorpus('test', project.project(':corpora:anydomain:WSJ').tasks.test_MRG)
+}
 
     task clean_setup << {
         ant.delete {
@@ -36,7 +41,7 @@ project('ensemble_wsj_uni') {
         }
     }
 
-    task list_parsers {
+    task list_parsers << {
         project.childProjects.sort { it.key }.each { println it }
     }
 }
@@ -44,36 +49,19 @@ project('ensemble_wsj_uni') {
 task setup_wsj_only (type:SetUpParser) {
     dependsOn 'corpora:anydomain:WSJ:train_MRG'
     dependsOn 'corpora:anydomain:WSJ:tune_MRG'
-//    dependsOn 'corpora:anydomain:WSJ:test_MRG'
 
     base_parser_dir = file('bllip-parser')
     corpus_name = 'corpora:anydomain:WSJ'
     parser_dir = file('wsj_only')
 }
 
-//task train_wsj_only(type:Exec) {
-//    dependsOn setup_wsj_only
-//
-//    def model_dir = 'first-stage/DATA/EN'
-//
-//    outputs.files model_dir
-//
-//    // first-stage/TRAIN/allScript first-stage/DATA/EN tmp/train-all.mrg tmp/dev-all.mrg
-//    workingDir setup_wsj_only.parser_dir
-//    executable 'first-stage/TRAIN/allScript'
-//    args([model_dir, setup_wsj_only.train_all_mrg, setup_wsj_only.tune_all_mrg])
-//
-//    ignoreExitValue false
+//task train_wsj_only(dependsOn:setup_wsj_only) << {
+//    ant.exec(executable:'first-stage/TRAIN/allScript', dir:setup_wsj_only.parser_dir, failonerror:true) {
+//        arg(file:setup_wsj_only.model_dir)
+//        arg(file:setup_wsj_only.train_all_mrg)
+//        arg(file:setup_wsj_only.tune_all_mrg)
+//    }
 //}
-
-
-task train_wsj_only(dependsOn:setup_wsj_only) << {
-    ant.exec(executable:'first-stage/TRAIN/allScript', dir:setup_wsj_only.parser_dir, failonerror:true) {
-        arg(file:setup_wsj_only.model_dir)
-        arg(file:setup_wsj_only.train_all_mrg)
-        arg(file:setup_wsj_only.tune_all_mrg)
-    }
-}
 
 
 allprojects {
