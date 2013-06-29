@@ -357,12 +357,91 @@ class EnsembleParser
                                 arg(file:input_files[i])
                             }
                         }
+
+                        def sepa_file = new File(best_parse_dir,  best_parse_file.name + '.sepa')
+
+                        def evalb_readers = per_parser_evalb_files.collect { evalb_reader(it) }
+
+                        def F_SCORE_FIELD = 0
+                        def ID_FIELD = 1
+                        def SENT_LEN_FIELD = 2
+                        def STATUS_FIELD = 3
+                        def TAG_ACC_FIELD = 12
+
+                        sepa_file.withPrintWriter { printer ->
+                            List<List> evaluations
+                            while ((evaluations = evalb_readers.collect { read_next_evaluation(it) }).every()) {
+                                def id0 = evaluations[0][ID_FIELD]
+                                def id_match = evaluations.collect { it[ID_FIELD] == id0 }
+                                if (!id_match.every()) {
+                                    println "Not all sentence_ids match:"
+                                    evaluations.each { println it }
+                                    break
+                                }
+
+                                def f_scores = evaluations.collect { it[F_SCORE_FIELD] }
+
+                                // We sum all the f-scores but one of them is our "gold" and so will be 100%.
+                                def sepa_mean_f = f_scores.sum() / ensemble_K
+
+                                def tag_accuracies = evaluations.collect { it[TAG_ACC_FIELD] }
+                                def sepa_tags_mean_f = tag_accuracies.sum() / ensemble_K
+
+                                def len0 = evaluations[0][SENT_LEN_FIELD]
+                                def status = evaluations.sum { it[STATUS_FIELD] }
+
+                                printer.println "$sepa_mean_f\t$sepa_tags_mean_f\t$id0\t$len0\t$status\t${f_scores.join('\t')}"
+                            }
+                        }
+
+                        evalb_readers.each { it.close() }
                     }
 
                     evaluated()
                 }
             }
         }
+    }
+
+    static BufferedReader evalb_reader(File evalb_file)
+    {
+        def evalb_reader = evalb_file.newReader()
+
+        // EvalB report header lines:
+        //   Sent.                        Matched  Bracket   Cross        Correct Tag
+        // ID  Len.  Stat. Recal  Prec.  Bracket gold test Bracket Words  Tags Accracy
+
+        expect_contains(evalb_reader.readLine(), "Sent.")
+        expect_contains(evalb_reader.readLine(), "Bracket")
+        expect_contains(evalb_reader.readLine(), "===")
+
+        evalb_reader
+    }
+
+    static expect_contains(String o, String e)
+    {
+        if (!o.contains(e)) { println "EvalB header mismatch.\nExpected: '$o'\nObserved: '$e'\n" }
+    }
+
+    static read_next_evaluation(BufferedReader evalb_reader) {
+        def evalb_line = evalb_reader.readLine()
+
+        if (evalb_line.startsWith("===")) return []
+
+        def eval_matcher = evalb_line =~ /\s*(\d+)\s+(\d+)\s+(\d+)\s+([.\d]+)\s+([.\d]+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+([.\d]+)/
+        def eval_match = eval_matcher[0]
+        def (__, sentence_id1, sent_len, status, recall, precision, matched_bracket, brackets_gold, brackets_test, cross_bracket, word_count, correct_tags, tag_accuracy) = eval_match
+
+        sentence_id1 = sentence_id1 as Integer
+        sent_len = sent_len as Integer
+
+        precision = precision as Double
+        recall = recall as Double
+        tag_accuracy = tag_accuracy as Double
+
+        Double f_measure = (precision + recall) ? 2 * (precision * recall) / (precision + recall) : 0
+
+        [f_measure, sentence_id1, sent_len, status, recall, precision, matched_bracket, brackets_gold, brackets_test, cross_bracket, word_count, correct_tags, tag_accuracy]
     }
 
     List<String> read_batch(Reader reader)
