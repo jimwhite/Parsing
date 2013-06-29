@@ -203,7 +203,7 @@ class CharniakParser
         }
     }
 
-    static class SelectParseTask extends DefaultTask
+    static class SelectParseTask extends DefaultTaskWithEvaluate
     {
         @Input
         String input_task_name
@@ -213,6 +213,8 @@ class CharniakParser
 
         SelectParseTask() {
             project.afterEvaluate {
+                println "SelectTask.afterEvaluate  ${project.path} ${it}"
+
                 Task input_task_task = project.tasks[input_task_name]
 
                 dependsOn input_task_task
@@ -253,11 +255,13 @@ class CharniakParser
                         }
                     }
                 }
+
+                evaluated()
             }
         }
     }
 
-    static class EvalBTask extends DefaultTask
+    static class EvalBTask extends DefaultTaskWithEvaluate
     {
         @Input
         String gold_task_name
@@ -272,6 +276,7 @@ class CharniakParser
         File evalb_output_dir
 
         EvalBTask() {
+            def _task = this
             project.afterEvaluate {
                 Task input_task = project.tasks[input_task_name]
 
@@ -281,45 +286,53 @@ class CharniakParser
 
                 dependsOn gold_task
 
-                Map<String, File> gold_parse_files = gold_task.outputs.files.files.collectEntries { [it.name, it] }
-
                 def evalb_prm_file = new File(evalb_program_dir, 'new.prm')
 
                 inputs.files(evalb_prm_file)
 
-                doFirst {
-                    ant.mkdir(dir:evalb_output_dir)
-                }
+                evaluateAfterAll([input_task, gold_task]) {
+                    println "evaluateAfter $_task"
+                    Map<String, File> gold_parse_files = gold_task.outputs.files.files.collectEntries { [it.name, it] }
 
-                def evalb_executable = new File(evalb_program_dir, 'evalb')
+                    doFirst {
+                        ant.mkdir(dir:evalb_output_dir)
+                    }
 
-                input_task.outputs.files.each { best_parse_file ->
-                    def base_name = best_parse_file.name - ~/\.best$/
-                    def gold_parse_file = gold_parse_files[base_name + '.gold']
-                    def output_file = new File(evalb_output_dir, base_name + '.evalb')
+                    def evalb_executable = new File(evalb_program_dir, 'evalb')
 
-                    // Must send stderr somewhere since redirecting stdout without a redirect
-                    // for stderr will merge them into the output file.
-                    def error_file = new File(evalb_output_dir, output_file.name + '.err')
+                    input_task.outputs.files.each { best_parse_file ->
+                        def base_name = best_parse_file.name - ~/\.best$/
+                        def gold_parse_file = gold_parse_files[base_name + '.gold']
+                        def output_file = new File(evalb_output_dir, base_name + '.evalb')
 
-                    inputs.files(best_parse_file)
-                    /*if (gold_parse_file != null)*/ inputs.files(gold_parse_file)
-                    outputs.files(output_file)
+                        // Must send stderr somewhere since redirecting stdout without a redirect
+                        // for stderr will merge them into the output file.
+                        def error_file = new File(evalb_output_dir, output_file.name + '.err')
 
-                    doLast {
-                        ant.exec(executable: evalb_executable, dir:evalb_output_dir, failonerror:true
-                                , output: output_file, error: error_file) {
-                            arg(value:'-p')     // Input is tokenized
-                            arg(file:evalb_prm_file)
-                            arg(file:gold_parse_file)
-                            arg(file:best_parse_file)
+                        println best_parse_file
+                        println output_file
+                        println gold_parse_file
+                        println "yo on file()"
+
+                        inputs.files(gold_parse_file, best_parse_file)
+                        outputs.file(output_file)
+
+                        doLast {
+                            ant.exec(executable: evalb_executable, dir:evalb_output_dir, failonerror:true
+                                    , output: output_file, error: error_file) {
+                                arg(value:'-p')     // Input is tokenized
+                                arg(file:evalb_prm_file)
+                                arg(file:gold_parse_file)
+                                arg(file:best_parse_file)
+                            }
                         }
                     }
                 }
+
+                evaluated()
             }
         }
     }
-
 
     static class SetUpTask extends DefaultTask
     {

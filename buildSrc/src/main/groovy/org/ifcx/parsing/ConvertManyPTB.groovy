@@ -4,7 +4,7 @@ import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputDirectory
 import org.gradle.api.tasks.SourceTask
 
-class ConvertManyPTB extends SourceTask {
+class ConvertManyPTB extends SourceTaskWithEvaluate {
     @Input
     String mode
 
@@ -33,6 +33,7 @@ class ConvertManyPTB extends SourceTask {
                 def output_file = new File(output_dir, ptb_file.name + file_ext)
                 def error_file = new File(output_dir, output_file.name + '.err')
 
+                println "converting $output_file"
                 outputs.files(output_file)
 
                 doLast {
@@ -43,6 +44,8 @@ class ConvertManyPTB extends SourceTask {
                     }
                 }
             }
+
+            evaluated()
         }
     }
 

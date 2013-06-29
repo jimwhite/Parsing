@@ -3,8 +3,6 @@ import org.ifcx.parsing.ConvertManyPTB
 import org.ifcx.parsing.EnsembleParser
 import org.ifcx.parsing.SetUpParser
 
-//evaluationDependsOnChildren()
-
 evaluationDependsOn(':corpora')
 evaluationDependsOn(':corpora:anydomain')
 evaluationDependsOn(':corpora:anydomain:WSJ')
@@ -26,14 +24,18 @@ project('wsj_only') {
     }
 }
 
+println 1
+
 project('ensemble_wsj_uni') {
+    println 2
+
     new EnsembleParser(it).with {
         bllip_parser_dir = ensemble_project.rootProject.file('bllip-parser')
         corpus_name = ':corpora:anydomain:WSJ'
         split_method =  'uni'
         createTasks()
-        createTasksForCorpus('wsj_test', project.project(':corpora:anydomain:WSJ').tasks.test_MRG)
-}
+        createTasksForCorpus('wsj_test', project(':corpora:anydomain:WSJ').tasks.test_MRG)
+    }
 
     task clean_setup << {
         ant.delete {
@@ -42,9 +44,11 @@ project('ensemble_wsj_uni') {
     }
 
     task list_parsers << {
-        project.childProjects.sort { it.key }.each { println it }
+        childProjects.sort { it.key }.each { println it }
     }
 }
+
+println 3
 
 task setup_wsj_only (type:SetUpParser) {
     dependsOn 'corpora:anydomain:WSJ:train_MRG'

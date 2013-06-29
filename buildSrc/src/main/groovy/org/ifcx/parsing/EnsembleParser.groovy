@@ -37,6 +37,10 @@ class EnsembleParser
     def createTasks()
     {
         ensemble_project.with {
+//            evaluationDependsOnChildren()
+//            beforeEvaluate { println "beforeEvaluate $it" }
+//            afterEvaluate { println "afterEvaluate $it" }
+
             mkdir projectDir
             // Creating the setUpTask also
 
@@ -46,6 +50,11 @@ class EnsembleParser
             // Create the parsers after the ensemble set_up task since they depend on it.
             owner.parser_projects = childProjects.keySet().grep { it.startsWith 'parser_' }.sort().collect { childProjects[it] }
             owner.parsers = parser_projects.collect { create_parser it }
+
+//            parser_projects.each {
+//                it.beforeEvaluate { println "beforeEvaluate $it" }
+//                it.afterEvaluate { println "afterEvaluate $it" }
+//            }
 
             // Ensemble training is just making sure the training task for each of the child parsers has been done.
             owner.trainTask = project.task("train").configure {
@@ -78,6 +87,7 @@ class EnsembleParser
             mode = '-c'
         }
 
+        // Create the tasks for this corpus in each of our child parsers.
         def parsers_for_corpus = parsers.collect { it.createTasksForCorpus base_name, source_task }
 
         def parse = ensemble_project.task("$base_name-parse").configure {
@@ -85,7 +95,9 @@ class EnsembleParser
         }
 
         def select_best_parse = ensemble_project.task("$base_name-select", type:SelectParseTask).configure {
-            input_task_name = parse.name
+            dependsOn(*(parsers_for_corpus.select))
+            println parsers_for_corpus.select
+            input_tasks = parsers_for_corpus.select
             best_parse_dir = project.file("$base_name-parsed")
         }
 
@@ -273,32 +285,45 @@ class EnsembleParser
         }
     }
 
-    static class SelectParseTask extends DefaultTask
+    static class SelectParseTask extends DefaultTaskWithEvaluate
     {
-        @Input
-        String input_task_name
+        List<Task> input_tasks
 
         @Input
         File best_parse_dir
 
         SelectParseTask() {
             project.afterEvaluate {
-                Task input_task_task = project.tasks[input_task_name]
+                evaluateAfterAll(input_tasks) {
+                    println "SelectTask.afterEvaluate ${project.path}"
+                    println "input_tasks $input_tasks"
+                    println "select inputs ${input_tasks.inputs.files.files}"
 
-                dependsOn input_task_task
+                    doFirst {
+                        ant.mkdir(dir:best_parse_dir)
+                    }
 
-                doFirst {
-                    ant.mkdir(dir:best_parse_dir)
-                }
+                    // Make sure our inputs are in some repeatable order.
+                    input_tasks = input_tasks.sort { it.project.name }
 
-                input_task_task.outputs.files.each { nbest_file ->
-                    def output_file = new File(best_parse_dir, (nbest_file.name - ~/\.sent\.nbest$/) + '.best')
+//                inputs.files(*input_tasks.outputs.files.singleFile)
+                    // That does the effectively same thing as this:
+                    input_tasks.each { inputs.file(it.outputs.files.singleFile) }
 
-                    inputs.files(nbest_file)
-                    outputs.files(output_file)
+                    def proto_input_file = input_tasks.first().outputs.files.singleFile
+
+                    def best_parse_file = new File(best_parse_dir, proto_input_file.name)
+                    outputs.file(best_parse_file)
+
+//                    println "select outputs"
+//                    println outputs.files.files
 
                     doLast {
+                        ant.copy(file:input_tasks.first().outputs.files.singleFile, tofile:best_parse_file, overwrite:true, force:true)
                     }
+
+                    println closuresToCall
+                    evaluated()
                 }
             }
         }
