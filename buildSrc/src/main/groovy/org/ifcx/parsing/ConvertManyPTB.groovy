@@ -33,7 +33,7 @@ class ConvertManyPTB extends SourceTaskWithEvaluate {
                 def output_file = new File(output_dir, ptb_file.name + file_ext)
                 def error_file = new File(output_dir, output_file.name + '.err')
 
-                println "converting $output_file"
+//                println "converting $output_file"
                 outputs.files(output_file)
 
                 doLast {

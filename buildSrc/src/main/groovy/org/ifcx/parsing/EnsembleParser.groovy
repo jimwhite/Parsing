@@ -5,6 +5,7 @@ import org.gradle.api.Project
 import org.gradle.api.Task
 import org.gradle.api.file.FileCollection
 import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.InputDirectory
 
 class EnsembleParser
 {
@@ -88,7 +89,7 @@ class EnsembleParser
         }
 
         // Create the tasks for this corpus in each of our child parsers.
-        def parsers_for_corpus = parsers.collect { it.createTasksForCorpus base_name, source_task }
+        def parsers_for_corpus = parsers.collect { it.createTasksForCorpus base_name, source_task, true }
 
         def parse = ensemble_project.task("$base_name-parse").configure {
             dependsOn(*parsers_for_corpus.parse)
@@ -96,7 +97,7 @@ class EnsembleParser
 
         def select_best_parse = ensemble_project.task("$base_name-select", type:SelectParseTask).configure {
             dependsOn(*(parsers_for_corpus.select))
-            println parsers_for_corpus.select
+            evalb_program_dir = new File(owner.bllip_parser_dir, 'evalb')
             input_tasks = parsers_for_corpus.select
             best_parse_dir = project.file("$base_name-parsed")
         }
@@ -292,12 +293,20 @@ class EnsembleParser
         @Input
         File best_parse_dir
 
+        @InputDirectory
+        File evalb_program_dir
+
         SelectParseTask() {
             project.afterEvaluate {
                 evaluateAfterAll(input_tasks) {
-                    println "SelectTask.afterEvaluate ${project.path}"
-                    println "input_tasks $input_tasks"
-                    println "select inputs ${input_tasks.inputs.files.files}"
+                    def evalb_executable = new File(evalb_program_dir, 'evalb')
+
+                    def evalb_prm_file = new File(evalb_program_dir, 'new.prm')
+
+
+//                    println "SelectTask.afterEvaluate ${project.path}"
+//                    println "input_tasks $input_tasks"
+//                    println "select inputs ${input_tasks.inputs.files.files}"
 
                     doFirst {
                         ant.mkdir(dir:best_parse_dir)
@@ -306,23 +315,50 @@ class EnsembleParser
                     // Make sure our inputs are in some repeatable order.
                     input_tasks = input_tasks.sort { it.project.name }
 
-//                inputs.files(*input_tasks.outputs.files.singleFile)
-                    // That does the effectively same thing as this:
-                    input_tasks.each { inputs.file(it.outputs.files.singleFile) }
+                    def input_files = input_tasks*.outputs.files.singleFile
 
-                    def proto_input_file = input_tasks.first().outputs.files.singleFile
+                    inputs.files(*input_files)
 
-                    def best_parse_file = new File(best_parse_dir, proto_input_file.name)
+                    def best_parse_file = new File(best_parse_dir, input_files.first().name)
+
                     outputs.file(best_parse_file)
 
 //                    println "select outputs"
 //                    println outputs.files.files
 
                     doLast {
-                        ant.copy(file:input_tasks.first().outputs.files.singleFile, tofile:best_parse_file, overwrite:true, force:true)
+//                        ant.copy(file:input_tasks.first().outputs.files.singleFile, tofile:best_parse_file, overwrite:true, force:true)
+
+                        // Some meaningless (but repeatable) seed.
+                        def random = new Random(0xbc329e631aL)
+
+                        def best_parse_readers = input_files.collect { it.newReader() }
+
+                        def ensemble_K = best_parse_readers.size()
+
+                        best_parse_file.withPrintWriter { printer ->
+                            List<String> parses
+                            while ((parses = best_parse_readers.collect { it.readLine() }).every()) {
+                                printer.println parses[random.nextInt(ensemble_K)]
+                            }
+                        }
+
+                        best_parse_readers.each { it.close() }
+
+                        def per_parser_evalb_files = input_tasks.collect { new File(best_parse_dir, it.project.name + '.sepa.evalb') }
+
+                        ensemble_K.times { i ->
+                            ant.exec(executable: evalb_executable, dir:best_parse_dir, failonerror:true
+                                    , output: per_parser_evalb_files[i]
+                                    , error: new File(best_parse_dir, per_parser_evalb_files[i].name + '.err')) {
+                                arg(value:'-p')     // Input is tokenized
+                                arg(file:evalb_prm_file)
+                                arg(file:best_parse_file)
+                                arg(file:input_files[i])
+                            }
+                        }
                     }
 
-                    println closuresToCall
                     evaluated()
                 }
             }

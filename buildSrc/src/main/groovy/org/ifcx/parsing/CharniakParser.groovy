@@ -45,23 +45,13 @@ class CharniakParser
         [set_up:setUpTask, train:trainTask]
     }
 
-    def createTasksForCorpus(String base_name, Task source_task)
+    def createTasksForCorpus(String base_name, Task source_task, parse_only = false)
     {
         def _parser = this
 
 //        project.mkdir project.file(base_name)
 
         def parsed_dir = project.file("$base_name-parsed")
-
-        def convert_to_gold = project.task("$base_name-convert_to_gold", type:ConvertManyPTB).configure {
-            dependsOn source_task
-            bllip_parser_dir = owner.base_parser_dir
-            source = source_task.outputs.files
-            output_dir = project.file("$base_name-gold")
-            mode = '-e'
-
-            assert bllip_parser_dir
-        }
 
         def convert_to_sent = project.task("$base_name-convert_to_sent", type:ConvertManyPTB).configure {
             dependsOn source_task
@@ -82,15 +72,30 @@ class CharniakParser
             best_parse_dir = parsed_dir
         }
 
-        def evaluate_parse = project.task("$base_name-evaluate", type:EvalBTask).configure {
-            evalb_program_dir = new File(owner.base_parser_dir, 'evalb')
-            gold_task_name = convert_to_gold.name
-            input_task_name = select_best_parse.name
-            evalb_output_dir = parsed_dir
-        }
+        if (!parse_only) {
+            def convert_to_gold = project.task("$base_name-convert_to_gold", type:ConvertManyPTB).configure {
+                dependsOn source_task
+                bllip_parser_dir = owner.base_parser_dir
+                source = source_task.outputs.files
+                output_dir = project.file("$base_name-gold")
+                mode = '-e'
 
-        [convert_to_gold:convert_to_gold, convert_to_sent:convert_to_sent
-            , parse:parse, select:select_best_parse, evaluate:evaluate_parse]
+                assert bllip_parser_dir
+            }
+
+            def evaluate_parse = project.task("$base_name-evaluate", type:EvalBTask).configure {
+                evalb_program_dir = new File(owner.base_parser_dir, 'evalb')
+                gold_task_name = convert_to_gold.name
+                input_task_name = select_best_parse.name
+                evalb_output_dir = parsed_dir
+            }
+
+            [convert_to_gold:convert_to_gold, convert_to_sent:convert_to_sent
+                    , parse:parse, select:select_best_parse, evaluate:evaluate_parse]
+        } else {
+            [convert_to_sent:convert_to_sent, parse:parse, select:select_best_parse]
+
+        }
     }
 
     static class TrainTask extends DefaultTask
@@ -213,7 +218,7 @@ class CharniakParser
 
         SelectParseTask() {
             project.afterEvaluate {
-                println "SelectTask.afterEvaluate  ${project.path} ${it}"
+//                println "SelectTask.afterEvaluate  ${project.path} ${it}"
 
                 Task input_task_task = project.tasks[input_task_name]
 
@@ -286,19 +291,20 @@ class CharniakParser
 
                 dependsOn gold_task
 
+                def evalb_executable = new File(evalb_program_dir, 'evalb')
+
                 def evalb_prm_file = new File(evalb_program_dir, 'new.prm')
 
                 inputs.files(evalb_prm_file)
 
                 evaluateAfterAll([input_task, gold_task]) {
                     println "evaluateAfter $_task"
+
                     Map<String, File> gold_parse_files = gold_task.outputs.files.files.collectEntries { [it.name, it] }
 
                     doFirst {
                         ant.mkdir(dir:evalb_output_dir)
                     }
-
-                    def evalb_executable = new File(evalb_program_dir, 'evalb')
 
                     input_task.outputs.files.each { best_parse_file ->
                         def base_name = best_parse_file.name - ~/\.best$/
@@ -312,7 +318,6 @@ class CharniakParser
                         println best_parse_file
                         println output_file
                         println gold_parse_file
-                        println "yo on file()"
 
                         inputs.files(gold_parse_file, best_parse_file)
                         outputs.file(output_file)
