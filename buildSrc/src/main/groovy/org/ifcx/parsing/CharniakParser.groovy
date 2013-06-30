@@ -298,7 +298,7 @@ class CharniakParser
                 inputs.files(evalb_prm_file)
 
                 evaluateAfterAll([input_task, gold_task]) {
-                    println "evaluateAfter $_task"
+//                    println "evaluateAfter $_task"
 
                     Map<String, File> gold_parse_files = gold_task.outputs.files.files.collectEntries { [it.name, it] }
 
@@ -315,9 +315,9 @@ class CharniakParser
                         // for stderr will merge them into the output file.
                         def error_file = new File(evalb_output_dir, output_file.name + '.err')
 
-                        println best_parse_file
-                        println output_file
-                        println gold_parse_file
+//                        println best_parse_file
+//                        println output_file
+//                        println gold_parse_file
 
                         inputs.files(gold_parse_file, best_parse_file)
                         outputs.file(output_file)

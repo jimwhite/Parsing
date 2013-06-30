@@ -24,11 +24,7 @@ project('wsj_only') {
     }
 }
 
-println 1
-
 project('ensemble_wsj_uni') {
-    println 2
-
     new EnsembleParser(it).with {
         bllip_parser_dir = ensemble_project.rootProject.file('bllip-parser')
         corpus_name = ':corpora:anydomain:WSJ'
@@ -47,8 +43,6 @@ project('ensemble_wsj_uni') {
         childProjects.sort { it.key }.each { println it }
     }
 }
-
-println 3
 
 task setup_wsj_only (type:SetUpParser) {
     dependsOn 'corpora:anydomain:WSJ:train_MRG'

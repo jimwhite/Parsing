@@ -220,6 +220,8 @@ class EnsembleParser
         SEPAEvalTask()
         {
             project.afterEvaluate {
+                dependsOn(input_task, gold_task)
+
                 evaluateAfterAll([input_task, gold_task]) {
                     doFirst {
                         project.mkdir sepa_eval_dir
