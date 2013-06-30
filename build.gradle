@@ -31,6 +31,7 @@ project('ensemble_wsj_uni') {
         split_method =  'uni'
         createTasks()
         createTasksForCorpus('wsj_test', project(':corpora:anydomain:WSJ').tasks.test_MRG)
+        createTasksForCorpus('brown_test', project(':corpora:anydomain:Brown').tasks.test_MRG)
     }
 
     task clean_setup << {

@@ -22,6 +22,41 @@ project("anydomain:WSJ") {
      outputs.files(section_files([24]))
      doFirst { check_output_files(outputs.files) }
   }
+
+  task list {
+      [train_MRG, tune_MRG, test_MRG].each { splitTask ->
+          dependsOn splitTask
+          doLast { splitTask.outputs.files.each { println it } }
+      }
+  }
+}
+
+project("anydomain:Brown") {
+    File Brown_dir = project.projectDir
+
+    def check_output_files = { it.each { mrg_file -> if (!mrg_file.exists()) throw new FileNotFoundException("Missing corpus file: $mrg_file") } }
+
+    task train_MRG {
+        outputs.file new File(Brown_dir, 'train')
+        doFirst { check_output_files(outputs.files) }
+    }
+
+    task tune_MRG {
+        outputs.file new File(Brown_dir, 'tune')
+        doFirst { check_output_files(outputs.files) }
+    }
+
+    task test_MRG {
+        outputs.file new File(Brown_dir, 'test')
+        doFirst { check_output_files(outputs.files) }
+    }
+
+    task list {
+        [train_MRG, tune_MRG, test_MRG].each { splitTask ->
+            dependsOn splitTask
+            doLast { splitTask.outputs.files.each { println it } }
+        }
+    }
 }
 
 task list_WSJ {

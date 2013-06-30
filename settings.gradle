@@ -1,5 +1,8 @@
 // include 'parsing'
-include 'corpora', 'corpora:anydomain', 'corpora:anydomain:WSJ'
+include 'corpora', 'corpora:anydomain'
+include 'corpora:anydomain:WSJ'
+include 'corpora:anydomain:Brown'
+
 include 'wsj_only'
 include 'ensemble_wsj_uni'
 
