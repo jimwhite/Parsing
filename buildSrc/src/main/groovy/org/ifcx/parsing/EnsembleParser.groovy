@@ -6,6 +6,7 @@ import org.gradle.api.Task
 import org.gradle.api.file.FileCollection
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputDirectory
+import org.gradle.api.tasks.OutputDirectory
 
 class EnsembleParser
 {
@@ -109,9 +110,19 @@ class EnsembleParser
             evalb_output_dir = project.file("$base_name-parsed")
         }
 
+        def sepa_filter = ensemble_project.task("$base_name-filter", type:SEPAEvalTask).configure {
+            sepa_filter_value = 94
+            gold_task = convert_to_gold
+            input_task = select_best_parse
+            sepa_eval_dir = project.file("$base_name-sepa")
+            evalb_program_dir = new File(owner.bllip_parser_dir, 'evalb')
+        }
+
         [convert_to_gold:convert_to_gold, convert_to_sent:convert_to_sent
                 , parsers_for_corpus:parsers_for_corpus
-                , parse:parse, select:select_best_parse, evaluate:evaluate_parse]
+                , parse:parse, select:select_best_parse, evaluate:evaluate_parse
+                , sepa_filter:sepa_filter
+        ]
     }
 
     protected CharniakParser create_parser(Project parser_project) {
@@ -177,6 +188,100 @@ class EnsembleParser
             corpus_name = 'corpus'
             createTasks()
             it
+        }
+    }
+
+    static class SEPAEvalTask extends DefaultTaskWithEvaluate
+    {
+        Task input_task
+
+        Task gold_task
+
+        @Input
+        Double sepa_filter_value
+
+        @InputDirectory
+        File evalb_program_dir
+
+        @OutputDirectory
+        File sepa_eval_dir
+
+        def sepa_filter(String sepa_line)
+        {
+            def fields = sepa_line.split(/\s+/)
+            def sepa_mean_f = fields[0] as Double
+
+            // len <= 40
+//            (fields[3] as Integer) <= 40
+
+            sepa_mean_f > sepa_filter_value
+        }
+
+        SEPAEvalTask()
+        {
+            project.afterEvaluate {
+                evaluateAfterAll([input_task, gold_task]) {
+                    doFirst {
+                        project.mkdir sepa_eval_dir
+                    }
+
+                    def parse_file = input_task.outputs.files.singleFile
+                    def gold_file = gold_task.outputs.files.singleFile
+                    def sepa_file = new File(parse_file.parentFile, parse_file.name + '.sepa')
+
+                    inputs.files(parse_file, sepa_file, gold_file)
+
+                    def filtered_sepa_file = new File(sepa_eval_dir, sepa_file.name)
+                    def filtered_gold_file = new File(sepa_eval_dir, gold_file.name)
+                    def filtered_parse_file = new File(sepa_eval_dir, parse_file.name)
+
+                    def evalb_sepa_filtered = new File(sepa_eval_dir, parse_file.name + '.evalb')
+
+                    outputs.files(filtered_sepa_file, filtered_gold_file, filtered_parse_file, evalb_sepa_filtered)
+
+                    doLast {
+                        sepa_file.withReader { sepa_reader ->
+                        gold_file.withReader { gold_reader ->
+                        parse_file.withReader { parse_reader ->
+                        filtered_sepa_file.withPrintWriter { filtered_sepa_writer ->
+                        filtered_gold_file.withPrintWriter { filtered_gold_writer ->
+                        filtered_parse_file.withPrintWriter { filtered_parse_writer ->
+                            String sepa_line
+                            while (sepa_line = sepa_reader.readLine()) {
+                                def gold_line = gold_reader.readLine()
+                                def parse_line = parse_reader.readLine()
+
+                                if (sepa_filter(sepa_line)) {
+                                    filtered_sepa_writer.println(sepa_line)
+                                    filtered_gold_writer.println(gold_line)
+                                    filtered_parse_writer.println(parse_line)
+                                }
+                            }
+                        }
+                        }
+                        }
+                        }
+                        }
+                        }
+
+                        def evalb_executable = new File(evalb_program_dir, 'evalb')
+
+                        def evalb_prm_file = new File(evalb_program_dir, 'new.prm')
+
+                        ant.exec(executable: evalb_executable
+                                , dir:sepa_eval_dir, failonerror:true
+                                , output: evalb_sepa_filtered
+                                , error: new File(sepa_eval_dir, evalb_sepa_filtered.name + '.err')) {
+                            arg(value:'-p')
+                            arg(file: evalb_prm_file)
+                            arg(file:filtered_gold_file)
+                            arg(file:filtered_parse_file)
+                        }
+                    }
+
+                    evaluated()
+                }
+            }
         }
     }
 
@@ -390,7 +495,7 @@ class EnsembleParser
                                 def len0 = evaluations[0][SENT_LEN_FIELD]
                                 def status = evaluations.sum { it[STATUS_FIELD] }
 
-                                printer.println "$sepa_mean_f\t$sepa_tags_mean_f\t$id0\t$len0\t$status\t${f_scores.join('\t')}"
+                                printer.println "$sepa_mean_f\t$sepa_tags_mean_f\t$id0\t$len0\t$status\t$ensemble_K\t${f_scores.join('\t')}\t${tag_accuracies.join('\t')}"
                             }
                         }
 
