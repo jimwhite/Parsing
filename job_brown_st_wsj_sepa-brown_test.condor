@@ -1,0 +1,18 @@
+####################
+#
+# James White UW ID 1138573 Net ID jimwhite
+#
+####################
+
+Universe   = vanilla
+Environment = PATH=/usr/kerberos/bin:/usr/local/bin:/bin:/usr/bin:/opt/git/bin:/opt/scripts:/condor/bin;JAVA_HOME=/usr/java/latest/;JVM_OPTS=-Xmx4g
+Executable  = /projects/SSTP/Parsing/gradlew
+Arguments   = -s brown_st_wsj_sepa:brown_test-evaluate
+Log         = gradlew_brown_st_wsj_sepa-brown_test.log
+Output 		= gradlew_brown_st_wsj_sepa-brown_test.out
+Error	    = gradlew_brown_st_wsj_sepa-brown_test.err
+Request_Memory=7*1029
+#Periodic_Remove = (RemoteWallClockTime - CumulativeSuspensionTime) > 1800)
+Notification=Error
++Research = True
+Queue
