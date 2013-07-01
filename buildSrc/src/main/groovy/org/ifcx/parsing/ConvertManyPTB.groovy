@@ -19,7 +19,7 @@ class ConvertManyPTB extends SourceTaskWithEvaluate {
             def ptb_executable = new File(bllip_parser_dir, 'second-stage/programs/prepare-data/ptb')
 
             doFirst {
-                ant.mkdir(dir:output_dir)
+                mkdir(output_dir)
             }
 
             def file_ext = ''
