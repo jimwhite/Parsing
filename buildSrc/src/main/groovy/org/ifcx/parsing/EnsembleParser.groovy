@@ -206,6 +206,8 @@ class EnsembleParser
         @OutputDirectory
         File sepa_eval_dir
 
+        File filtered_parses_file
+
         def sepa_filter(String sepa_line)
         {
             def fields = sepa_line.split(/\s+/)
@@ -240,6 +242,8 @@ class EnsembleParser
                     def evalb_sepa_filtered = new File(sepa_eval_dir, parse_file.name + '.evalb')
 
                     outputs.files(filtered_sepa_file, filtered_gold_file, filtered_parse_file, evalb_sepa_filtered)
+
+                    thisObject.filtered_parses_file = filtered_parse_file
 
                     doLast {
                         sepa_file.withReader { sepa_reader ->

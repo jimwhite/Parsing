@@ -1,5 +1,6 @@
 import org.ifcx.parsing.CharniakParser
 import org.ifcx.parsing.ConvertManyPTB
+import org.ifcx.parsing.DefaultTaskWithEvaluate
 import org.ifcx.parsing.EnsembleParser
 import org.ifcx.parsing.SetUpParser
 
@@ -21,6 +22,9 @@ project('wsj_only') {
         base_parser_dir = project.rootProject.file('bllip-parser')
         createTasks()
         createTasksForCorpus('test', project.project(':corpora:anydomain:WSJ').tasks.test_MRG)
+        createTasksForCorpus('brown_test', project.project(':corpora:anydomain:WSJ').tasks.test_MRG)
+        createTasksForCorpus('brown_tune', project.project(':corpora:anydomain:WSJ').tasks.test_MRG)
+//        createTasksForCorpus('brown_train', project.project(':corpora:anydomain:WSJ').tasks.test_MRG)
     }
 }
 
@@ -32,6 +36,8 @@ project('ensemble_wsj_uni') {
         createTasks()
         createTasksForCorpus('wsj_test', project(':corpora:anydomain:WSJ').tasks.test_MRG)
         createTasksForCorpus('brown_test', project(':corpora:anydomain:Brown').tasks.test_MRG)
+        createTasksForCorpus('brown_train', project(':corpora:anydomain:Brown').tasks.train_MRG)
+        createTasksForCorpus('brown_tune', project(':corpora:anydomain:Brown').tasks.tune_MRG)
     }
 
     task clean_setup << {
@@ -42,6 +48,77 @@ project('ensemble_wsj_uni') {
 
     task list_parsers << {
         childProjects.sort { it.key }.each { println it }
+    }
+}
+
+project('brown_st_wsj_sepa') {
+    // Brown self-training adding SEPA filtered data from WSJ parser to WSJ corpus.
+    evaluationDependsOn ':ensemble_wsj_uni'
+
+    project('corpus') {
+        def check_output_files = { it.each { mrg_file -> if (!mrg_file.exists()) throw new FileNotFoundException("Missing corpus file: $mrg_file") } }
+
+        task split_MRG(type:DefaultTaskWithEvaluate) {
+            ext.train_file = new File(project.projectDir, 'st-train.mrg')
+            ext.tune_file = new File(project.projectDir, 'st-tune.mrg')
+
+            outputs.files train_file, tune_file
+
+            doFirst { mkdir(project.projectDir) }
+
+            project.afterEvaluate {
+                def input_task = project(':ensemble_wsj_uni').tasks['brown_train-filter']
+                evaluateAfterAll([input_task]) {
+                    dependsOn input_task
+                    def parses_file = input_task.filtered_parses_file
+                    inputs.file parses_file
+                    doLast {
+                        train_file.withPrintWriter { train_writer ->
+                        tune_file.withPrintWriter { tune_writer ->
+                            def i = 0
+                            parses_file.eachLine { line ->
+                                if ((++i % 10) == 0) {
+                                    tune_writer.println line
+                                } else {
+                                    train_writer.println line
+                                }
+                            }
+                        }
+                        }
+                    }
+                    evaluated()
+                }
+            }
+        }
+
+        task train_MRG {
+            dependsOn 'split_MRG'
+            outputs.files(project(':corpora:anydomain:WSJ').tasks.train_MRG.outputs.files)
+            outputs.file split_MRG.train_file
+            doFirst { check_output_files(outputs.files) }
+        }
+
+        task tune_MRG {
+            dependsOn 'split_MRG'
+            outputs.files(project(':corpora:anydomain:WSJ').tasks.tune_MRG.outputs.files)
+            outputs.file split_MRG.tune_file
+            doFirst { check_output_files(outputs.files) }
+        }
+
+        task list {
+            [train_MRG, tune_MRG].each { splitTask ->
+                dependsOn splitTask
+                doLast { splitTask.outputs.files.each { println it } }
+            }
+        }
+    }
+
+    new CharniakParser(it).with {
+        corpus_name = 'corpus'
+        base_parser_dir = project.rootProject.file('bllip-parser')
+        createTasks()
+        createTasksForCorpus('wsj_test', project.project(':corpora:anydomain:WSJ').tasks.test_MRG)
+        createTasksForCorpus('brown_test', project.project(':corpora:anydomain:Brown').tasks.test_MRG)
     }
 }
 
