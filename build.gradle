@@ -139,6 +139,10 @@ task setup_wsj_only (type:SetUpParser) {
 //    }
 //}
 
+task wrapper(type: Wrapper) {
+//  gradleVersion = "1.7-20130626220034+0000"
+  gradleVersion = "1.8-20130630220025+0000"
+}
 
 allprojects {
 //     println project
