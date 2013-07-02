@@ -21,10 +21,11 @@ project('wsj_only') {
         corpus_name = ':corpora:anydomain:WSJ'
         base_parser_dir = project.rootProject.file('bllip-parser')
         createTasks()
-        createTasksForCorpus('test', project.project(':corpora:anydomain:WSJ').tasks.test_MRG)
-        createTasksForCorpus('brown_test', project.project(':corpora:anydomain:WSJ').tasks.test_MRG)
-        createTasksForCorpus('brown_tune', project.project(':corpora:anydomain:WSJ').tasks.test_MRG)
-//        createTasksForCorpus('brown_train', project.project(':corpora:anydomain:WSJ').tasks.test_MRG)
+        createTasksForCorpus('wsj_test', project(':corpora:anydomain:WSJ').tasks.test_MRG)
+        createTasksForCorpus('wsj_tune', project(':corpora:anydomain:WSJ').tasks.tune_MRG)
+        createTasksForCorpus('brown_test', project(':corpora:anydomain:Brown').tasks.test_MRG)
+        createTasksForCorpus('brown_tune', project(':corpora:anydomain:Brown').tasks.tune_MRG)
+        createTasksForCorpus('brown_train', project(':corpora:anydomain:Brown').tasks.train_MRG)
     }
 }
 
@@ -35,9 +36,10 @@ project('ensemble_wsj_uni') {
         split_method =  'uni'
         createTasks()
         createTasksForCorpus('wsj_test', project(':corpora:anydomain:WSJ').tasks.test_MRG)
+        createTasksForCorpus('wsj_tune', project(':corpora:anydomain:WSJ').tasks.tune_MRG)
         createTasksForCorpus('brown_test', project(':corpora:anydomain:Brown').tasks.test_MRG)
-        createTasksForCorpus('brown_train', project(':corpora:anydomain:Brown').tasks.train_MRG)
         createTasksForCorpus('brown_tune', project(':corpora:anydomain:Brown').tasks.tune_MRG)
+        createTasksForCorpus('brown_train', project(':corpora:anydomain:Brown').tasks.train_MRG)
     }
 
     task clean_setup << {
@@ -115,10 +117,13 @@ project('brown_st_wsj_sepa') {
 
     new CharniakParser(it).with {
         corpus_name = 'corpus'
-        base_parser_dir = project.rootProject.file('bllip-parser')
+        base_parser_dir = parser_project.rootProject.file('bllip-parser')
         createTasks()
-        createTasksForCorpus('wsj_test', project.project(':corpora:anydomain:WSJ').tasks.test_MRG)
-        createTasksForCorpus('brown_test', project.project(':corpora:anydomain:Brown').tasks.test_MRG)
+        createTasksForCorpus('wsj_test', project(':corpora:anydomain:WSJ').tasks.test_MRG)
+        createTasksForCorpus('wsj_tune', project(':corpora:anydomain:WSJ').tasks.tune_MRG)
+        createTasksForCorpus('brown_test', project(':corpora:anydomain:Brown').tasks.test_MRG)
+        createTasksForCorpus('brown_tune', project(':corpora:anydomain:Brown').tasks.tune_MRG)
+        createTasksForCorpus('brown_train', project(':corpora:anydomain:Brown').tasks.train_MRG)
     }
 }
 

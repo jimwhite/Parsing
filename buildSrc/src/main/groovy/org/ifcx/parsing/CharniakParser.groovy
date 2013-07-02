@@ -12,7 +12,7 @@ import org.gradle.api.tasks.TaskAction
 
 class CharniakParser
 {
-    final Project project
+    final Project parser_project
 
     String corpus_name
 
@@ -29,18 +29,18 @@ class CharniakParser
     private File model_dir
 
     CharniakParser(Project project) {
-        this.project = project
+        parser_project = project
     }
 
     def createTasks()
     {
-        parser_dir = project.projectDir // new File(project.projectDir, project.name)
+        parser_dir = parser_project.projectDir // new File(project.projectDir, project.name)
 
         model_dir = new File(parser_dir, 'first-stage/DATA/EN')
 
-        setUpTask = project.task(type:SetUpTask, "set_up").configure(SetUpTask.configurer(this))
+        setUpTask = parser_project.task(type:SetUpTask, "set_up").configure(SetUpTask.configurer(this))
 
-        trainTask = project.task(type:TrainTask, "train").configure(TrainTask.configurer(this))
+        trainTask = parser_project.task(type:TrainTask, "train").configure(TrainTask.configurer(this))
 
         [set_up:setUpTask, train:trainTask]
     }
@@ -51,39 +51,39 @@ class CharniakParser
 
 //        project.mkdir project.file(base_name)
 
-        def parsed_dir = project.file("$base_name-parsed")
+        def parsed_dir = parser_project.file("$base_name-parsed")
 
-        def convert_to_sent = project.task("$base_name-convert_to_sent", type:ConvertManyPTB).configure {
+        def convert_to_sent = parser_project.task("$base_name-convert_to_sent", type:ConvertManyPTB).configure {
             dependsOn source_task
             bllip_parser_dir = owner.base_parser_dir
             source = source_task.outputs.files
-            output_dir = project.file("$base_name-sentences")
+            output_dir = parser_project.file("$base_name-sentences")
             mode = '-c'
         }
 
-        def parse = project.task("$base_name-parse", type:ParseTask).configure {
+        def parse = parser_project.task("$base_name-parse", type:ParseTask).configure {
             parser = _parser
             input_task_name = convert_to_sent.name
             nbest_parses_dir = parsed_dir
         }
 
-        def select_best_parse = project.task("$base_name-select", type:SelectParseTask).configure {
+        def select_best_parse = parser_project.task("$base_name-select", type:SelectParseTask).configure {
             input_task_name = parse.name
             best_parse_dir = parsed_dir
         }
 
         if (!parse_only) {
-            def convert_to_gold = project.task("$base_name-convert_to_gold", type:ConvertManyPTB).configure {
+            def convert_to_gold = parser_project.task("$base_name-convert_to_gold", type:ConvertManyPTB).configure {
                 dependsOn source_task
                 bllip_parser_dir = owner.base_parser_dir
                 source = source_task.outputs.files
-                output_dir = project.file("$base_name-gold")
+                output_dir = parser_project.file("$base_name-gold")
                 mode = '-e'
 
                 assert bllip_parser_dir
             }
 
-            def evaluate_parse = project.task("$base_name-evaluate", type:EvalBTask).configure {
+            def evaluate_parse = parser_project.task("$base_name-evaluate", type:EvalBTask).configure {
                 evalb_program_dir = new File(owner.base_parser_dir, 'evalb')
                 gold_task_name = convert_to_gold.name
                 input_task_name = select_best_parse.name
