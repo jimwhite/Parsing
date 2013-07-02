@@ -9,3 +9,4 @@ include 'ensemble_wsj_uni'
 20.times { i -> include "ensemble_wsj_uni:parser_${String.sprintf('%02d', i)}:corpus" }
 
 include 'brown_st_wsj_sepa:corpus'
+include 'brown_st_wsj:corpus'
