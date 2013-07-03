@@ -22,12 +22,7 @@
 #include <stdlib.h> //### added for exit, atoi decls
 #include <ctype.h>
 #include <string.h>
-
-#ifdef __APPLE__
-#include <malloc/malloc.h>
-#else
- #include <malloc.h>
-#endif
+#include <malloc.h>
 
 
 /* Internal Data format -------------------------------------------*/
