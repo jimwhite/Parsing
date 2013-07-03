@@ -12,6 +12,12 @@ class DefaultTaskWithEvaluate extends DefaultTask
 
     List<Closure> closuresToCall = []
 
+    static List allWithEval = []
+
+    DefaultTaskWithEvaluate() {
+        allWithEval << this
+    }
+
     void _afterEvaluate(Closure closure) {
         if (isEvaluated) {
             closure.call()
@@ -25,6 +31,8 @@ class DefaultTaskWithEvaluate extends DefaultTask
         isEvaluated = true
 
         closuresToCall.each { it.call() }
+
+        closuresToCall = null
     }
 
     void evaluateAfterAll(List<Task> tasks, Closure closure) {

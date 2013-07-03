@@ -12,6 +12,12 @@ class SourceTaskWithEvaluate extends SourceTask
 
     List<Closure> closuresToCall = []
 
+    static List allWithEval = []
+
+    SourceTaskWithEvaluate() {
+        allWithEval << this
+    }
+
     void _afterEvaluate(Closure closure) {
         if (isEvaluated) {
             closure.call()
@@ -25,6 +31,8 @@ class SourceTaskWithEvaluate extends SourceTask
         isEvaluated = true
 
         closuresToCall.each { it.call() }
+
+        closuresToCall = null
     }
 
     void evaluateAfterAll(List<Task> tasks, Closure closure) {

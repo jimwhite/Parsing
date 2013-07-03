@@ -217,8 +217,9 @@ class CharniakParser
         File best_parse_dir
 
         SelectParseTask() {
+            def _task = this
             project.afterEvaluate {
-//                println "SelectTask.afterEvaluate  ${project.path} ${it}"
+//                println "SelectTask.afterEvaluate  ${_task.path}"
 
                 Task input_task_task = project.tasks[input_task_name]
 
@@ -262,6 +263,8 @@ class CharniakParser
                 }
 
                 evaluated()
+
+//                outputs.files.files.each { println it }
             }
         }
     }

@@ -3,6 +3,7 @@ import org.ifcx.parsing.ConvertManyPTB
 import org.ifcx.parsing.DefaultTaskWithEvaluate
 import org.ifcx.parsing.EnsembleParser
 import org.ifcx.parsing.SetUpParser
+import org.ifcx.parsing.SourceTaskWithEvaluate
 
 evaluationDependsOn(':corpora')
 evaluationDependsOn(':corpora:anydomain')
@@ -31,7 +32,7 @@ project('wsj_only') {
 
 project('ensemble_wsj_uni') {
     new EnsembleParser(it).with {
-        bllip_parser_dir = ensemble_project.rootProject.file('bllip-parser')
+        bllip_parser_dir = project.rootProject.file('bllip-parser')
         corpus_name = ':corpora:anydomain:WSJ'
         split_method =  'uni'
         createTasks()
@@ -65,21 +66,52 @@ project('brown_st_wsj_sepa') {
             ext.tune_file = new File(project.projectDir, 'st-tune.mrg')
             ext.weight_multiplier = 1
 
+            def input_task = project(':ensemble_wsj_uni').tasks['brown_train-filter']
+
+//            outputs.files train_file, tune_file
+//
+//            doFirst { mkdir(project.projectDir) }
+//
+//                def input_task = project(':ensemble_wsj_uni').tasks['brown_train-filter']
+//
+//                inputs.property('weight_multiplier', weight_multiplier)
+//
+//                evaluateAfterAll([input_task]) {
+//                    dependsOn input_task
+//                    def parses_file = input_task.filtered_parses_file
+//                    inputs.file parses_file
+//                    doLast {
+//                        train_file.withPrintWriter { train_writer ->
+//                        tune_file.withPrintWriter { tune_writer ->
+//                            def i = 0
+//                            parses_file.eachLine { line ->
+//                                if ((++i % 10) == 0) {
+//                                    weight_multiplier.times { tune_writer.println line }
+//                                } else {
+//                                    weight_multiplier.times { train_writer.println line }
+//                                }
+//                            }
+//                        }
+//                        }
+//                    }
+//                    evaluated()
+//                }
             outputs.files train_file, tune_file
 
             doFirst { mkdir(project.projectDir) }
 
-            project.afterEvaluate {
-                def input_task = project(':ensemble_wsj_uni').tasks['brown_train-filter']
+            inputs.property('weight_multiplier', weight_multiplier)
 
-                inputs.property('weight_multiplier', weight_multiplier)
+            evaluateAfterAll([input_task]) {
+                dependsOn input_task
+                def parses_file = input_task.filtered_parses_file
+                inputs.file parses_file
 
-                evaluateAfterAll([input_task]) {
-                    dependsOn input_task
-                    def parses_file = input_task.filtered_parses_file
-                    inputs.file parses_file
-                    doLast {
-                        train_file.withPrintWriter { train_writer ->
+                println train_file
+                println tune_file
+
+                doLast {
+                    train_file.withPrintWriter { train_writer ->
                         tune_file.withPrintWriter { tune_writer ->
                             def i = 0
                             parses_file.eachLine { line ->
@@ -90,29 +122,64 @@ project('brown_st_wsj_sepa') {
                                 }
                             }
                         }
-                        }
                     }
-                    evaluated()
                 }
+                evaluated()
             }
         }
 
-        task train_MRG {
+        task train_MRG(type:DefaultTaskWithEvaluate) {
             dependsOn 'split_MRG'
             inputs.files(project(':corpora:anydomain:WSJ').tasks.train_MRG.outputs.files)
             inputs.file split_MRG.train_file
             outputs.files(project(':corpora:anydomain:WSJ').tasks.train_MRG.outputs.files)
             outputs.file split_MRG.train_file
-            doFirst { check_output_files(outputs.files) }
+            doLast { check_output_files(outputs.files) }
         }
 
-        task tune_MRG {
+//        task tune_MRG {
+//            dependsOn 'split_MRG'
+////            inputs.files(project(':corpora:anydomain:WSJ').tasks.tune_MRG.outputs.files)
+//            inputs.file split_MRG.tune_file
+////            outputs.files(project(':corpora:anydomain:WSJ').tasks.tune_MRG.outputs.files)
+//            outputs.file split_MRG.tune_file
+//            doFirst { check_output_files(outputs.files) }
+//        }
+
+        task tune_MRG(type:DefaultTaskWithEvaluate) {
+        println "yo"
+//            dependsOn 'split_MRG'
+//            inputs.files(project(':corpora:anydomain:WSJ').tasks.tune_MRG.outputs.files)
+//            inputs.file split_MRG.tune_file
+//            def merged_tune_file = new File(project.projectDir, 'st-tune-merged.mrg')
+//            outputs.file merged_tune_file
+//            doLast {
+//                println "merging"
+//                ant.concat(destfile: merged_tune_file, eol:'unix') {
+//                    [split_MRG.tune_file, project(':corpora:anydomain:WSJ').tasks.tune_MRG.outputs.files.singleFile].each { f ->
+//                        println f
+//                        filelist(dir:f.parentFile) { file(name:f.name) }
+//                    }
+//                }
+//            }
             dependsOn 'split_MRG'
+//            inputs.file split_MRG.tune_file
             inputs.files(project(':corpora:anydomain:WSJ').tasks.tune_MRG.outputs.files)
-            inputs.file split_MRG.tune_file
-            outputs.files(project(':corpora:anydomain:WSJ').tasks.tune_MRG.outputs.files)
-            outputs.file split_MRG.tune_file
-            doFirst { check_output_files(outputs.files) }
+            def merged_tune_file = new File(project.projectDir, 'st-tune-merged.mrg')
+//            println "Will merge to $merged_tune_file from ${split_MRG.tune_file}"
+            println "Using wsj tune"
+            outputs.file merged_tune_file
+            evaluateAfterAll([split_MRG]) {
+                println "split_MRG was evaluated"
+                doLast {
+                    println "merging"
+                    println ant
+                    ant.concat(destfile: merged_tune_file.path, eol:'unix') {
+                        inputs.files.addToAntBuilder(ant, 'resources')
+                    }
+                }
+                evaluated()
+            }
         }
 
         task list {
@@ -125,7 +192,7 @@ project('brown_st_wsj_sepa') {
 
     new CharniakParser(it).with {
         corpus_name = 'corpus'
-        base_parser_dir = parser_project.rootProject.file('bllip-parser')
+        base_parser_dir = project.rootProject.file('bllip-parser')
         createTasks()
         createTasksForCorpus('wsj_test', project(':corpora:anydomain:WSJ').tasks.test_MRG)
         createTasksForCorpus('wsj_tune', project(':corpora:anydomain:WSJ').tasks.tune_MRG)
@@ -138,6 +205,7 @@ project('brown_st_wsj_sepa') {
 project('brown_st_wsj') {
     // Brown self-training adding SEPA filtered data from WSJ parser to WSJ corpus.
     evaluationDependsOn ':wsj_only'
+    evaluationDependsOn 'corpus'
 
     project('corpus') {
         def check_output_files = { it.each { mrg_file -> if (!mrg_file.exists()) throw new FileNotFoundException("Missing corpus file: $mrg_file") } }
@@ -149,17 +217,26 @@ project('brown_st_wsj') {
 
             outputs.files train_file, tune_file
 
-            doFirst { mkdir(project.projectDir) }
+            println "hey"
 
-            project.afterEvaluate {
+                doFirst { println "mkdir" ; mkdir(project.projectDir) }
+
                 def input_task = project(':wsj_only').tasks['brown_train-select']
 
                 inputs.property('weight_multiplier', weight_multiplier)
 
+                println "In bsw ae"
+
                 evaluateAfterAll([input_task]) {
+                    println "In bew ae evaa"
+
                     dependsOn input_task
                     def parses_file = input_task.outputs.files.singleFile
                     inputs.file parses_file
+
+                    println train_file
+                    println tune_file
+
                     doLast {
                         train_file.withPrintWriter { train_writer ->
                             tune_file.withPrintWriter { tune_writer ->
@@ -176,38 +253,67 @@ project('brown_st_wsj') {
                     }
                     evaluated()
                 }
-            }
         }
 
-        task train_MRG {
+        task train_MRG(type:DefaultTaskWithEvaluate) {
             dependsOn 'split_MRG'
             inputs.files(project(':corpora:anydomain:WSJ').tasks.train_MRG.outputs.files)
             inputs.file split_MRG.train_file
             outputs.files(project(':corpora:anydomain:WSJ').tasks.train_MRG.outputs.files)
             outputs.file split_MRG.train_file
-            doFirst { check_output_files(outputs.files) }
+            evaluateAfterAll([split_MRG]) {
+                doLast { println "ck" ; check_output_files(outputs.files) }
+                evaluated()
+            }
         }
 
-        task tune_MRG {
+        task tune_MRG(type:DefaultTaskWithEvaluate) {
             dependsOn 'split_MRG'
+//            inputs.file split_MRG.tune_file
             inputs.files(project(':corpora:anydomain:WSJ').tasks.tune_MRG.outputs.files)
-            inputs.file split_MRG.tune_file
-            outputs.files(project(':corpora:anydomain:WSJ').tasks.tune_MRG.outputs.files)
-            outputs.file split_MRG.tune_file
-            doFirst { check_output_files(outputs.files) }
+            def merged_tune_file = new File(project.projectDir, 'st-tune-merged.mrg')
+//            println "Will merge to $merged_tune_file from ${split_MRG.tune_file}"
+            outputs.file merged_tune_file
+            evaluateAfterAll([split_MRG]) {
+                println "split_MRG was evaluated"
+                doFirst {
+                    println "wsj tune only"
+                    println ant
+                    ant.concat(destfile: merged_tune_file.path, eol:'unix') {
+//                        [split_MRG.tune_file, project(':corpora:anydomain:WSJ').tasks.tune_MRG.outputs.files.singleFile].each { f ->
+//                            println f
+//                            filelist(dir:f.parentFile) { file(name:f.name) }
+//                        }
+//                        filelist(dir:split_MRG.tune_file.parentFile) { file(name:split_MRG.tune_file.name) }
+                        inputs.files.addToAntBuilder(ant, 'resources')
+                    }
+                }
+                evaluated()
+            }
+            doLast {
+                DefaultTaskWithEvaluate.allWithEval.each { if (it.closuresToCall) println "${it.path} ${it.isEvaluated}" }
+                SourceTaskWithEvaluate.allWithEval.each { if (it.closuresToCall) println "${it.path} ${it.isEvaluated}" }
+            }
         }
 
         task list {
             [train_MRG, tune_MRG].each { splitTask ->
                 dependsOn splitTask
-                doLast { splitTask.outputs.files.each { println it } }
+                doLast {
+                    splitTask.outputs.files.each { println it }
+                }
+            }
+
+            doLast {
+                DefaultTaskWithEvaluate.allWithEval.each { if (it.closuresToCall) println "${it.path} ${it.isEvaluated}" }
+                SourceTaskWithEvaluate.allWithEval.each { if (it.closuresToCall) println "${it.path} ${it.isEvaluated}" }
             }
         }
     }
 
     new CharniakParser(it).with {
         corpus_name = 'corpus'
-        base_parser_dir = parser_project.rootProject.file('bllip-parser')
+        base_parser_dir = project.rootProject.file('bllip-parser')
         createTasks()
         createTasksForCorpus('wsj_test', project(':corpora:anydomain:WSJ').tasks.test_MRG)
         createTasksForCorpus('wsj_tune', project(':corpora:anydomain:WSJ').tasks.tune_MRG)
