@@ -22,11 +22,61 @@ project('wsj_only') {
         corpus_name = ':corpora:anydomain:WSJ'
         base_parser_dir = project.rootProject.file('bllip-parser')
         createTasks()
+
+        task set_up_reranker {
+            dependsOn train  // Could be set_up, but no need to take chances for now.
+
+            def reranker_dir = new File(project.projectDir, "reranker")
+
+            if (reranker_dir.exists()) {
+//                throw new Exception("Can't do 'cp -R' over existing reranker dir on Linux ${project}")
+            }
+
+            def train_mrg_dir = new File(reranker_dir, 'xtrain')
+            def tune_mrg_dir = new File(reranker_dir, 'xtune')
+
+            outputs.dir(train_mrg_dir)
+            outputs.dir(tune_mrg_dir)
+
+            doLast {
+                // Don't try to use AntBuilder mkdir since Gradle's project.mkdir likes it first.
+                mkdir reranker_dir
+                mkdir train_mrg_dir
+                mkdir tune_mrg_dir
+
+                ant.sequential {
+                    exec(executable:'cp', failonerror:true, logError:true) {
+                        arg(line:'-RLp')
+                        ['second-stage', 'evalb', 'Makefile', 'train_reranker.sh', 'train_reranker.condor'].each {
+                            arg(file:new File(base_parser_dir, it))
+                        }
+                        arg(file:reranker_dir)
+                    }
+
+                    // Use the first-stage we already have.
+                    exec(executable:'ln', failonerror:true, logError:true) {
+                        arg(value:'-s')
+                        arg(file:new File(project.projectDir, 'first-stage'))
+                        arg(file:new File(reranker_dir, 'first-stage'))
+                    }
+
+                    copy(todir:train_mrg_dir, preservelastmodified:true) {
+                        fileset(dir:new File(project.projectDir, 'train'))
+                    }
+
+                    copy(todir:tune_mrg_dir, preservelastmodified:true) {
+                        fileset(dir:new File(project.projectDir, 'tune'))
+                    }
+                }
+            }
+        }
+
         createTasksForCorpus('wsj_test', project(':corpora:anydomain:WSJ').tasks.test_MRG)
         createTasksForCorpus('wsj_tune', project(':corpora:anydomain:WSJ').tasks.tune_MRG)
         createTasksForCorpus('brown_test', project(':corpora:anydomain:Brown').tasks.test_MRG)
         createTasksForCorpus('brown_tune', project(':corpora:anydomain:Brown').tasks.tune_MRG)
         createTasksForCorpus('brown_train', project(':corpora:anydomain:Brown').tasks.train_MRG)
+
     }
 }
 
