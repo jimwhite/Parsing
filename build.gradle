@@ -1,4 +1,5 @@
 import org.ifcx.parsing.CharniakParser
+import org.ifcx.parsing.CharniakParser.EvalBTask
 import org.ifcx.parsing.ConvertManyPTB
 import org.ifcx.parsing.DefaultTaskWithEvaluate
 import org.ifcx.parsing.EnsembleParser
@@ -74,8 +75,57 @@ project('wsj_only') {
         createTasksForCorpus('wsj_test', project(':corpora:anydomain:WSJ').tasks.test_MRG)
         createTasksForCorpus('wsj_tune', project(':corpora:anydomain:WSJ').tasks.tune_MRG)
         createTasksForCorpus('brown_test', project(':corpora:anydomain:Brown').tasks.test_MRG)
-        createTasksForCorpus('brown_tune', project(':corpora:anydomain:Brown').tasks.tune_MRG)
+        def brown_tune = createTasksForCorpus('brown_tune', project(':corpora:anydomain:Brown').tasks.tune_MRG)
         createTasksForCorpus('brown_train', project(':corpora:anydomain:Brown').tasks.train_MRG)
+
+        task (type:DefaultTaskWithEvaluate, 'brown_tune-rerank') {
+            ext.input_task = brown_tune.parse
+            ext.reranked_dir = new File(project.projectDir, 'brown_tune-reranks')
+            dependsOn input_task
+            project.afterEvaluate {
+                evaluateAfterAll([input_task]) {
+                    def reranker_dir = new File(project.projectDir, 'reranker')
+                    def rerankerExecutable = new File(reranker_dir, 'second-stage/programs/features/best-parses')
+
+                    project.mkdir reranked_dir
+
+                    input_task.outputs.files.each { nbest_file ->
+                        def output_file = new File(reranked_dir, (nbest_file.name - ~/\.sent\.nbest$/) + '.best')
+
+                        // Must send stderr somewhere since redirecting stdout without a redirect
+                        // for stderr will merge them into the output file.
+                        def error_file = new File(reranked_dir, output_file.name + '.err')
+
+                        inputs.file(nbest_file)
+                        outputs.file(output_file)
+
+                        doLast {
+                            def MODELDIR=new File(reranker_dir, 'second-stage/models/ec50spfinal')
+                            def ESTIMATORNICKNAME='cvlm-l1c10P1'
+                            def RERANKER_WEIGHTS = new File(MODELDIR, ESTIMATORNICKNAME + '-weights.gz')
+                            def RERANKER_FEATURES = new File(MODELDIR, 'features.gz')
+
+                            ant.exec(executable: rerankerExecutable, dir:reranked_dir, failonerror:true
+                                    , input:nbest_file, output: output_file, error: error_file, logError:true) {
+                                arg(value:'-l')
+                                arg(file:RERANKER_FEATURES)
+                                arg(file:RERANKER_WEIGHTS)
+                            }
+                        }
+                    }
+                }
+
+                evaluated()
+            }
+        }
+
+        task (type:EvalBTask, 'brown_tune-rerank-evaluate') {
+            dependsOn 'brown_tune-rerank'
+            evalb_program_dir = new File(project.rootProject.file('bllip-parser'), 'evalb')
+            input_task_name = 'brown_tune-rerank'
+            gold_task_name = 'brown_tune-convert_to_gold'
+            evalb_output_dir = new File(project.projectDir, 'reranked')
+        }
 
     }
 }
@@ -197,7 +247,6 @@ project('brown_st_wsj_sepa') {
 //        }
 
         task tune_MRG(type:DefaultTaskWithEvaluate) {
-        println "yo"
 //            dependsOn 'split_MRG'
 //            inputs.files(project(':corpora:anydomain:WSJ').tasks.tune_MRG.outputs.files)
 //            inputs.file split_MRG.tune_file
@@ -217,13 +266,9 @@ project('brown_st_wsj_sepa') {
             inputs.files(project(':corpora:anydomain:WSJ').tasks.tune_MRG.outputs.files)
             def merged_tune_file = new File(project.projectDir, 'st-tune-merged.mrg')
 //            println "Will merge to $merged_tune_file from ${split_MRG.tune_file}"
-            println "Using wsj tune"
             outputs.file merged_tune_file
             evaluateAfterAll([split_MRG]) {
-                println "split_MRG was evaluated"
                 doLast {
-                    println "merging"
-                    println ant
                     ant.concat(destfile: merged_tune_file.path, eol:'unix') {
                         inputs.files.addToAntBuilder(ant, 'resources')
                     }
@@ -267,42 +312,33 @@ project('brown_st_wsj') {
 
             outputs.files train_file, tune_file
 
-            println "hey"
+            doFirst { println "mkdir" ; mkdir(project.projectDir) }
 
-                doFirst { println "mkdir" ; mkdir(project.projectDir) }
+            def input_task = project(':wsj_only').tasks['brown_train-select']
 
-                def input_task = project(':wsj_only').tasks['brown_train-select']
+            inputs.property('weight_multiplier', weight_multiplier)
 
-                inputs.property('weight_multiplier', weight_multiplier)
+            evaluateAfterAll([input_task]) {
+                dependsOn input_task
+                def parses_file = input_task.outputs.files.singleFile
+                inputs.file parses_file
 
-                println "In bsw ae"
-
-                evaluateAfterAll([input_task]) {
-                    println "In bew ae evaa"
-
-                    dependsOn input_task
-                    def parses_file = input_task.outputs.files.singleFile
-                    inputs.file parses_file
-
-                    println train_file
-                    println tune_file
-
-                    doLast {
-                        train_file.withPrintWriter { train_writer ->
-                            tune_file.withPrintWriter { tune_writer ->
-                                def i = 0
-                                parses_file.eachLine { line ->
-                                    if ((++i % 10) == 0) {
-                                        weight_multiplier.times { tune_writer.println line }
-                                    } else {
-                                        weight_multiplier.times { train_writer.println line }
-                                    }
+                doLast {
+                    train_file.withPrintWriter { train_writer ->
+                        tune_file.withPrintWriter { tune_writer ->
+                            def i = 0
+                            parses_file.eachLine { line ->
+                                if ((++i % 10) == 0) {
+                                    weight_multiplier.times { tune_writer.println line }
+                                } else {
+                                    weight_multiplier.times { train_writer.println line }
                                 }
                             }
                         }
                     }
-                    evaluated()
                 }
+                evaluated()
+            }
         }
 
         task train_MRG(type:DefaultTaskWithEvaluate) {
@@ -392,7 +428,7 @@ task setup_wsj_only (type:SetUpParser) {
 
 task wrapper(type: Wrapper) {
 //  gradleVersion = "1.7-20130626220034+0000"
-  gradleVersion = "1.8-20130630220025+0000"
+    gradleVersion = "1.8-20130630220025+0000"
 }
 
 allprojects {
