@@ -22,15 +22,7 @@ gondor.generate_dag(new File(new File(args[0]).name + ".dag"))
 
 class Gondor
 {
-// For input files that exist before any jobs are run, you should list them with these methods.
-// Otherwise you'll get warning messages that the generator is assuming that files that aren't
-// output by some job but are used as input must already exist.
-// Note that these methods don't actually check whether the files do indeed exist.  Perhaps they should warn about that too.
-// The add_data_files method will add all files recursively for any directories (and subdirectories).
-// The add_data_dirs method will only add the file directly referred to (which may be a file or directory).
-// Both methods accept path strings, File objects, or lists of them.
-
-// Condor DAG Generator vars
+    // Condor DAG Generator vars
     def job_counter = 0
     def output_files = [:]
     def all_jobs = []
@@ -45,6 +37,14 @@ class Gondor
         job_output_dir = new File(prefix + '_jobs')
         job_output_dir.mkdir()
     }
+
+    // For input files that exist before any jobs are run, you should list them with these methods.
+    // Otherwise you'll get warning messages that the generator is assuming that files that aren't
+    // output by some job but are used as input must already exist.
+    // Note that these methods don't actually check whether the files do indeed exist.  Perhaps they should warn about that too.
+    // The add_data_files method will add all files recursively for any directories (and subdirectories).
+    // The add_data_dirs method will only add the file directly referred to (which may be a file or directory).
+    // Both methods accept path strings, File objects, or lists of them.
 
     def add_data_files(Object... data_files) { _add_data_files(data_files, true) }
     def add_data_dirs(Object... data_dirs) { _add_data_files(data_dirs, false) }
