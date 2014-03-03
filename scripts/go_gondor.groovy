@@ -146,7 +146,7 @@ Queue
 
         condor_cmd_file.write(condorTemplate)
 
-        return { args ->
+        return { Map args ->
             if (args.is(null)) args = [:]
 
             def job_id = script_name + '_J' + (++job_counter)
