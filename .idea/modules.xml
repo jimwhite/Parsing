@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/Parsing.iml" filepath="$PROJECT_DIR$/Parsing.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../Gondor/gondor.iml" filepath="$PROJECT_DIR$/../Gondor/gondor.iml" />
     </modules>
   </component>
 </project>
