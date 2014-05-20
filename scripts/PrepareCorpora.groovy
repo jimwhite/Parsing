@@ -6,7 +6,10 @@ project("anydomain:WSJ") {
   File WSJ_dir = project.projectDir
   def section_file_name = { String.format("%02d.mrg", it) }
   def section_files = { it.collect { section_num -> new File(WSJ_dir, section_file_name(section_num)) } }
-  def check_output_files = { it.each { mrg_file -> if (!mrg_file.exists()) throw new FileNotFoundException("Missing corpus file: $mrg_file") } }
+  def check_output_files = { it.each { File mrg_file ->
+      if (!mrg_file.exists()) throw new FileNotFoundException("Missing corpus file: $mrg_file")
+      if (mrg_file.size() <= 0) throw new FileNotFoundException("Empty corpus file: $mrg_file")
+  } }
   
   task train_MRG {
      outputs.files(section_files(2..21)) 
@@ -34,7 +37,10 @@ project("anydomain:WSJ") {
 project("anydomain:Brown") {
     File Brown_dir = project.projectDir
 
-    def check_output_files = { it.each { mrg_file -> if (!mrg_file.exists()) throw new FileNotFoundException("Missing corpus file: $mrg_file") } }
+    def check_output_files = { it.each { File mrg_file ->
+        if (!mrg_file.exists()) throw new FileNotFoundException("Missing corpus file: $mrg_file")
+        if (mrg_file.size() <= 0) throw new FileNotFoundException("Empty corpus file: $mrg_file")
+    } }
 
     task train_MRG {
         outputs.file new File(Brown_dir, 'train')

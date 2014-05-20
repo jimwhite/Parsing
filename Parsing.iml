@@ -5,12 +5,12 @@
     <content url="file://$MODULE_DIR$">
       <sourceFolder url="file://$MODULE_DIR$/scripts" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
-      <excludeFolder url="file://$MODULE_DIR$/src" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="gondor" />
-    <orderEntry type="library" name="groovy-2.3.0-SNAPSHOT" level="application" />
+    <orderEntry type="library" name="gradle-core-1.11" level="application" />
+    <orderEntry type="library" name="groovy-2.3.0.SNAPSHOT" level="application" />
   </component>
 </module>
 
