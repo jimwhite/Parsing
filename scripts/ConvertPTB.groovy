@@ -1,4 +1,5 @@
-#!/usr/bin/env CLASSPATH=/Users/jim/Projects/Gondor/build/libs/Gondor-0.1.jar /Users/jim/Projects/Groovy/groovy-2.4.0-SNAPSHOT/bin/groovy
+#!/usr/bin/env CLASSPATH=/Users/jim/Projects/Gondor/out/artifacts/gondor/gondor.jar /Users/jim/Projects/Groovy/groovy-2.4.0-SNAPSHOT/bin/groovy
+//#!/usr/bin/env CLASSPATH=/Users/jim/Projects/Gondor/build/libs/Gondor-0.1.jar /Users/jim/Projects/Groovy/groovy-2.4.0-SNAPSHOT/bin/groovy
 
 import com.beust.jcommander.Parameter
 import groovy.transform.Field
@@ -24,13 +25,7 @@ def ptb_executable = new File(bllip_parser_dir, 'second-stage/programs/prepare-d
 
 def ptb_convert = command(path:ptb_executable.path) {
     // Flag that is set for pre-tokenized input.
-    arg 'mode', Command.REQUIRED, {
-        switch (it) {
-            case 'tree' : '-e'; break
-            case 'text' : '-c'; break
-            default : throw new IllegalArgumentException("mode arg to PTB converter must be 'tree' or 'text' but got $it");
-        }
-    }
+    arg 'mode', Command.REQUIRED, [tree:'-e', text:'-c']
 
     // PTB input file
     infile 'input'
