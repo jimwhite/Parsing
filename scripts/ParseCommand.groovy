@@ -7,8 +7,8 @@ import org.ifcx.gondor.api.OutputFile
 
 @groovy.transform.BaseScript WorkflowScript thisScript
 
-//@Parameter(names = '--model', description = 'Path to directory of model files.')
-//@InputDirectory @Field File model
+@Parameter(names = '--model', description = 'Path to directory of model files.')
+@InputDirectory @Field File model
 
 @Parameter(names = '--input', description = 'Text input file.')
 @OutputFile @Field File input
@@ -16,26 +16,24 @@ import org.ifcx.gondor.api.OutputFile
 @Parameter(names = '--output', description = 'n-best parsed output file.')
 @OutputFile @Field File output
 
-
 def parseIt = command(path:'../bllip-parser/first-stage/PARSE/parseIt') {
     // Flag that is set for pre-tokenized input.
     arg 'tokenized', Command.OPTIONAL, { it ? '-K' : [] }
 
     // Maximum sentence length.
-    arg 'sentenceLength', Command.OPTIONAL, { it ? "-l$it" : [] }
+    arg 'sentenceLength', 400, { if (it) { assert it instanceof Number ; "-l$it" } else { [] } }
 
     // Number of best to parses output.
-    arg 'bestCount', 50, { assert it instanceof Number ; [ "-N$it" ] }
+    arg 'bestCount', 50, { if (it) { assert it instanceof Number ; "-N$it" } else { [] } }
 
-    infile 'model', { stringify(it).collect { [ it + '/' ] } }
+    // parseIt is fussy about the path to the model directory and it must have a trailing slash.
+    // stringify returns a flat list of arguments as strings.
+    infile 'model', { stringify(it).collect { it + '/' } }
+    // That code could have been { (it as String) + '/' }
+    // but if file path handling changes that might not work well.
 
+    // Text input file
     infile 'input'
 }
 
-//arg(value:'-K')     // Input is tokenized
-//arg(value:'-l400')  // Accept very long sentences.
-//arg(value:"-N$number_of_parses")
-//arg(value:model_dir.path + '/')
-//arg(file:sent_file)
-
-parseIt(tokenized:true, sentenceLength:222, model:new File('../bllip-parser/first-stage/DATA/EN/'), input:input) >> output
+parseIt(tokenized:true, model:model, input:input) >> output
