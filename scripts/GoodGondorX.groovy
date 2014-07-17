@@ -3,7 +3,7 @@ import org.ifcx.gondor.Command
 @groovy.transform.BaseScript org.ifcx.gondor.WorkflowScript workflowScript
 
 void init(String contact) {
-    setWorkflowName(getWorkflowName() + 'Workflow')
+//    setWorkflowName(getWorkflowName() + 'Workflow')
     super.init("jim")
 }
 

@@ -10,7 +10,8 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="gondor" />
     <orderEntry type="library" name="gradle-core-1.11" level="application" />
-    <orderEntry type="library" name="groovy-2.3.0.SNAPSHOT" level="application" />
+    <orderEntry type="library" name="edu.stanford.nlp:stanford-corenlp:1.3.5" level="project" />
+    <orderEntry type="library" name="groovy-2.4.0.SNAPSHOT" level="application" />
   </component>
 </module>
 
