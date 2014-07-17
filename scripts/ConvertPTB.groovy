@@ -1,3 +1,5 @@
+#!/usr/bin/env CLASSPATH=/Users/jim/Projects/Gondor/build/libs/Gondor-0.1.jar /Users/jim/Projects/Groovy/groovy-2.4.0-SNAPSHOT/bin/groovy
+
 import com.beust.jcommander.Parameter
 import groovy.transform.Field
 import org.ifcx.gondor.Command
@@ -8,13 +10,13 @@ import org.ifcx.gondor.api.OutputFile
 
 @groovy.transform.BaseScript WorkflowScript thisScript
 
-@Parameter(names = '--format', description = 'Output format: gold (-e) or sentence (-c).')
+@Parameter(names = '--format', required = true, description = 'Output format: gold (-e) or sentence (-c).')
 @Field String mode
 
-@Parameter(names = '--input', description = 'PTB input file.')
+@Parameter(names = '--input', required = true, description = 'PTB input file.')
 @InputFile @Field File input
 
-@Parameter(names = '--output', description = 'Converted output file.')
+@Parameter(names = '--output', required = true, description = 'Converted output file.')
 @OutputFile @Field File output
 
 def bllip_parser_dir = new File('../bllip-parser')

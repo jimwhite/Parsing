@@ -1,3 +1,5 @@
+#!/usr/bin/env CLASSPATH=/Users/jim/Projects/Gondor/build/libs/Gondor-0.1.jar /Users/jim/Projects/Groovy/groovy-2.4.0-SNAPSHOT/bin/groovy
+
 import com.beust.jcommander.Parameter
 import groovy.transform.Field
 import org.ifcx.gondor.Command
@@ -7,13 +9,13 @@ import org.ifcx.gondor.api.OutputFile
 
 @groovy.transform.BaseScript WorkflowScript thisScript
 
-@Parameter(names = '--model', description = 'Path to directory of model files.')
+@Parameter(names = '--model', required = true, description = 'Path to directory of model files.')
 @InputDirectory @Field File model
 
-@Parameter(names = '--input', description = 'Text input file.')
+@Parameter(names = '--input', required = true, description = 'Text input file.')
 @OutputFile @Field File input
 
-@Parameter(names = '--output', description = 'n-best parsed output file.')
+@Parameter(names = '--output', required = true, description = 'n-best parsed output file.')
 @OutputFile @Field File output
 
 def parseIt = command(path:'../bllip-parser/first-stage/PARSE/parseIt') {
