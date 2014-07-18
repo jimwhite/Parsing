@@ -11,8 +11,8 @@ import org.ifcx.gondor.api.OutputFile
 
 @groovy.transform.BaseScript WorkflowScript thisScript
 
-@Parameter(names = '--format', required = true, description = 'Output format: gold (-e) or sentence (-c).')
-@Field String mode
+@Parameter(names = '--format', required = true, description = 'Output format: evalb, tokenized (aka charniak), berkeley, or gold.')
+@Field String format
 
 @Parameter(names = '--input', required = true, description = 'PTB input file.')
 @InputFile @Field File input
@@ -25,10 +25,21 @@ def ptb_executable = new File(bllip_parser_dir, 'second-stage/programs/prepare-d
 
 def ptb_convert = command(path:ptb_executable.path) {
     // Flag that is set for pre-tokenized input.
-    arg 'mode', Command.REQUIRED, [tree:'-e', text:'-c']
+    arg 'format', Command.REQUIRED, [evalb:'-e', tokenized:'-c', charniak:'-c', berkeley:'-b', gold:'-g']
+
+    // Divide the data into n equal-sized folds.
+    arg 'folds', Command.OPTIONAL, { assert it instanceof Number ; ['-n', it ] }
+
+    // Include only this fold.
+    arg 'include', Command.OPTIONAL, { assert it instanceof Number ; ['-i', it ] }
+
+    // Exclude this fold.
+    arg 'exclude', Command.OPTIONAL, { assert it instanceof Number ; ['-x', it ] }
 
     // PTB input file
     infile 'input'
 }
 
-ptb_convert(mode:mode, input:input) >> output
+ptb_convert(format:format, input:input) >> output
+
+// ptb_convert(format:'evalb', input:input, folds:20, include:2) >> new File('evalb_fold_2_of_20.txt')
